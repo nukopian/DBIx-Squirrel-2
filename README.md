@@ -1,3 +1,4 @@
+[![Actions Status](https://github.com/nukopian/DBIx-Squirrel-2/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/nukopian/DBIx-Squirrel-2/actions?workflow=test)
 # DBIx-Squirrel
 
 DBI, minus the boilerplate, plus a pipeline.

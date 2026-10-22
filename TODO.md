@@ -5,46 +5,6 @@ Work planned for a later session. CLAUDE.md's
 task should still be done, remove it in the commit that completes it, and
 delete this file with the last one. It must be gone before a release.
 
-## Set up the distribution with Minilla
-
-**Waiting for Iain's first module,** `lib/DBIx/Squirrel.pm`, with a
-`$VERSION` and POD giving its NAME (the abstract), AUTHOR and LICENSE:
-Minilla can't build without it, and Iain writes the code.
-
-**Done on 2026-10-22:** `minil.toml`, `cpanfile` and `README.pod`, with
-the three questions settled from Minilla 3.3.2's documentation and
-source (CLAUDE.md, Perl and The name, has the decisions):
-
-- **The repository URL** comes from the git remote, and can't be
-  overridden: `[Metadata]` is applied first, then the remote overwrites
-  `resources`. So `META.json` names DBIx-Squirrel-2 until the cut-over
-  renames the repository.
-- **The README** is written by hand in `README.pod` (`readme_from`),
-  and Minilla generates `README.md` from it, adding the CI badge.
-- **Releasing** uses `minil prepare VERSION` and `minil dist
-  --skip-prepare`, never `minil release`, which commits, makes an
-  unsigned tag and pushes. Uploading needs `cpan-upload`, from
-  CPAN::Uploader, which isn't installed: ask Iain before installing it,
-  in the MAINTAINING.md task.
-
-**What's left:** once the module is there, `minil build` generates
-`Build.PL`, `META.json` and `README.md`; commit them, and check the
-generated `README.md` differs from the committed one only by the badge.
-
-**Why:** the Perl CI jobs need the distribution to exist, and the
-release steps in docs/MAINTAINING.md depend on it.
-
-**Files:** `Build.PL`, `META.json`, `README.md` (generated).
-
-**Done when:** `minil build` makes a distribution whose `META.json`
-requires Perl 5.036, `minil test` passes, and
-in a fresh library without Minilla installed (a throwaway
-`cpanm -L` directory), `cpanm --installdeps --with-develop .` then
-`yath test` passes, and so does `prove -lr t`, which is what CPAN
-installers effectively run. The `cpanfile` lists Test2::V0 and
-Test2::Plugin::NoWarnings under `on test`, and Test2::Harness,
-Perl::Critic, Perl::Tidy and Data::Dump under `on develop`.
-
 ## Add the Perl tests to CI
 
 **What:** jobs in `.github/workflows/test.yml` that install the
@@ -68,6 +28,10 @@ repos/nukopian/DBIx-Squirrel-2/branches/main/protection --jq
 every commit, making a release (Minilla, a signed tag, a GitHub
 release and the CPAN upload), when something goes wrong, and the
 cut-over to DBIx-Squirrel from the plan doc, with paste-ready commands.
+A release uses `minil prepare VERSION` and `minil dist --skip-prepare`,
+never `minil release` (CLAUDE.md, Perl, says why), and uploads with
+`cpan-upload`, from CPAN::Uploader, which isn't installed yet: ask Iain
+before installing it.
 
 **Why:** so a release, and the one-off cut-over, can be done from the
 guide alone, even after a long gap.

@@ -11,3 +11,7 @@ badges = ["github-actions/test.yml"]
 # Changes keeps an "Unreleased" heading, edited by hand at a release,
 # rather than Minilla's {{$NEXT}}.
 manage_changes = false
+
+# Files for the maintainers, not for CPAN.
+[FileGatherer]
+exclude_match = ['^CLAUDE\.md$', '^TODO\.md$', '^docs/']
