@@ -15,7 +15,7 @@ DBIx::Squirrel - DBI, minus the boilerplate, plus a pipeline
 
 =head1 AUTHOR
 
-Iain Campbell
+Iain Campbell <cpanic@cpan.org>
 
 =head1 LICENSE
 
