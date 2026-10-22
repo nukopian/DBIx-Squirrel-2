@@ -68,8 +68,35 @@ what was Iain's.
   `cpanfile` listing the dependencies, so CI and `cpanm` from GitHub
   need nothing else. Follow its conventions rather than work around
   them.
-- Locally, Iain uses perlbrew with a library of the project's own, so
-  its modules don't mix with other projects'.
+- Locally, Iain uses perlbrew with a library of the project's own,
+  `perl-5.36.3@dbix-squirrel-2`, so its modules don't mix with other
+  projects'. His default Perl is a different one, so run commands with
+  the library named, and never `perlbrew switch` or `use`:
+
+  ```
+  perlbrew exec --with perl-5.36.3@dbix-squirrel-2 prove -lr t
+  ```
+
+  5.38.5, 5.40.5 and 5.42.3 are installed too, for testing across the
+  range CI covers.
+
+### Building a new Perl on Iain's Mac
+
+Since Xcode 27.1 (Apple clang 21, with the macOS 27.0 SDK), `perlbrew
+install` fails for every new Perl on his Mac, running macOS 26.7: the
+build stops at "Failed to build miniperl", with a segmentation fault,
+whatever the optimisation and with or without `--notest`. Building
+against the older SDK works:
+
+```
+SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk MACOSX_DEPLOYMENT_TARGET=26.0 perlbrew install perl-5.42.3 --notest
+```
+
+XS modules installed with `cpanm` need neither variable: DBI and
+DBD::SQLite built, passed their tests and worked on a Perl built this
+way, on 2026-10-22. If an XS module ever crashes the same way, try the
+same prefix on `cpanm`. Check whether this is still needed after the
+next Xcode update.
 
 ## The name
 
