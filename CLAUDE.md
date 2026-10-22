@@ -116,6 +116,44 @@ That built Net::SSLeay 1.96 and IO::Socket::SSL 2.099 against OpenSSL
 certificate. Drop the prefix once a Net::SSLeay release supports
 OpenSSL 4.
 
+### DBD::mysql and DBD::Pg
+
+Both build against client libraries outside Perl, and on Iain's Mac each
+needs telling which, so that every library in one Perl process uses
+OpenSSL 3 (built 2026-10-22: DBD::mysql 5.014, DBD::Pg 3.21.2, and with
+DBD::SQLite and IO::Socket::SSL they all load in one process, with TLS
+still verifying).
+
+**DBD::mysql** builds against MySQL 8.4.13, Oracle's package in
+`/usr/local/mysql`, whose `mysql_config` is on the PATH. Two things
+break a plain `cpanm DBD::mysql`: MySQL's bundled `libssl.3.dylib` and
+`libcrypto.3.dylib` record bare filenames as their install names, so
+DBD::mysql's library check can't run against them; and MakeMaker joins
+rpaths with colons, as on Linux, which macOS reads as one directory, so
+`@rpath/libmysqlclient.24.dylib` isn't found. So take OpenSSL from
+Homebrew's `openssl@3` (the same 3.5.9 that MySQL bundles), and add the
+rpath through `LDDLFLAGS`, starting from Perl's own:
+
+```
+F=$(perlbrew exec --quiet --with perl-5.36.3@dbix-squirrel-2 perl -MConfig -e 'print $Config{lddlflags}')
+perlbrew exec --with perl-5.36.3@dbix-squirrel-2 cpanm --configure-args="--libs='-L/opt/homebrew/opt/openssl@3/lib -L/usr/local/mysql/lib -lmysqlclient -lssl -lcrypto -lresolv' LDDLFLAGS='$F -Wl,-rpath,/usr/local/mysql/lib'" DBD::mysql
+```
+
+`-Wl,-rpath` can't go in `--libs`: Devel::CheckLib's check fails on it.
+Its tests skip without a test database ("no database connection").
+
+**DBD::Pg** builds against Postgres.app's `libpq`, not Homebrew's
+PostgreSQL 18, whose `libpq` links to OpenSSL 4:
+
+```
+A=/Applications/Postgres.app/Contents/Versions/latest
+POSTGRES_HOME=$A PATH=$A/bin:$PATH perlbrew exec --with perl-5.36.3@dbix-squirrel-2 cpanm DBD::Pg
+```
+
+Its tests start a temporary cluster of their own with `initdb`, so they
+run against a real server: 1,802 passed. Postgres.app must stay
+installed, as DBD::Pg links to its `libpq` by full path.
+
 ## The name
 
 The repository is DBIx-Squirrel-2 while it's in development. At release
