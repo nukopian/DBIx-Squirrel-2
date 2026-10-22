@@ -70,8 +70,9 @@ what was Iain's.
   them.
 - Locally, Iain uses perlbrew with a library of the project's own,
   `perl-5.36.3@dbix-squirrel-2`, so its modules don't mix with other
-  projects'. His default Perl is a different one, so run commands with
-  the library named, and never `perlbrew switch` or `use`:
+  projects'. Whatever his default Perl is at the time, run commands with
+  the library named, so they don't depend on it, and never `perlbrew
+  switch` or `use`, which would change his shell:
 
   ```
   perlbrew exec --with perl-5.36.3@dbix-squirrel-2 prove -lr t
