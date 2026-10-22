@@ -5,22 +5,6 @@ Work planned for a later session. CLAUDE.md's
 task should still be done, remove it in the commit that completes it, and
 delete this file with the last one. It must be gone before a release.
 
-## Read dbix-squirrel-v2, then archive it
-
-**What:** read `~/Git/github.com/nukopian/dbix-squirrel-v2` in full: what
-it changes from 1.6.5, which changes are syntax and which are design, and
-what its last commit ("feat: interim commit") left half-done. Write the
-findings into the plan doc. Then add a README note to dbix-squirrel-v2
-pointing to DBIx-Squirrel-2, and archive it (`gh repo archive
-nukopian/dbix-squirrel-v2 --yes`, with Iain's go-ahead).
-
-**Why:** the plan doc's first session starts from what v2 already worked
-out. Archiving it early avoids confusing dbix-squirrel-v2 with
-DBIx-Squirrel-2.
-
-**Done when:** the plan doc has the findings, and v2 is archived with
-its note.
-
 ## Set up the distribution with Minilla
 
 **What:** a Minilla distribution for DBIx-Squirrel (Iain chose Minilla
