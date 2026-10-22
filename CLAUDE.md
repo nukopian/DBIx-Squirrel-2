@@ -99,6 +99,23 @@ way, on 2026-10-22. If an XS module ever crashes the same way, try the
 same prefix on `cpanm`. Check whether this is still needed after the
 next Xcode update.
 
+### Net::SSLeay and OpenSSL 4
+
+Homebrew's `openssl` is now OpenSSL 4, and Net::SSLeay (which
+IO::Socket::SSL, and so `cpanm` over HTTPS, needs) doesn't build against
+it yet: OpenSSL 4 made `ASN1_TIME` opaque, and Net::SSLeay 1.96 fails
+with "incomplete definition of type 'ASN1_TIME'". Point it at Homebrew's
+OpenSSL 3 instead:
+
+```
+perlbrew exec --with perl-5.36.3@dbix-squirrel-2 sh -c 'OPENSSL_PREFIX=/opt/homebrew/opt/openssl@3 cpanm IO::Socket::SSL'
+```
+
+That built Net::SSLeay 1.96 and IO::Socket::SSL 2.099 against OpenSSL
+3.5.9 on 2026-10-22, and a TLS connection to metacpan verified its
+certificate. Drop the prefix once a Net::SSLeay release supports
+OpenSSL 4.
+
 ## The name
 
 The repository is DBIx-Squirrel-2 while it's in development. At release
