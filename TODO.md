@@ -40,15 +40,17 @@ in a fresh library without Minilla installed (a throwaway
 `cpanm -L` directory), `cpanm --installdeps --with-develop .` then
 `yath test` passes, and so does `prove -lr t`, which is what CPAN
 installers effectively run. The `cpanfile` lists Test2::V0 and
-Test2::Plugin::NoWarnings under `on test`, and Test2::Harness under
-`on develop`.
+Test2::Plugin::NoWarnings under `on test`, and Test2::Harness,
+Perl::Critic, Perl::Tidy and Data::Dump under `on develop`.
 
 ## Add the Perl tests to CI
 
 **What:** jobs in `.github/workflows/test.yml` that install the
 dependencies (`cpanm --installdeps --with-develop .`, so yath comes
 too) and run the tests with `yath test` on Perl 5.36, 5.38, 5.40 and
-5.42 on Linux, and the newest Perl on macOS. Then add those jobs to `main`'s
+5.42 on Linux, and the newest Perl on macOS. Add a style job on the
+newest Perl: `perlcritic lib`, and a check that `perltidy` would change
+nothing. Then add those jobs to `main`'s
 required checks, beside `secrets`.
 
 **Why:** CLAUDE.md promises CI from the floor to the newest Perl, and

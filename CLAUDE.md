@@ -189,6 +189,32 @@ DBIProfile, NoWarnings, MemUsage and UUID, Test2::Tools::Explain, and
 yath's suggested helpers (Cpanel::JSON::XS and JSON::MaybeXS for its
 logs, Term::ANSIColor, IO::Pager, Email::Stuffer).
 
+## Style and tools
+
+- **Perl::Tidy** formats the code, with `.perltidyrc` (Iain's, from the
+  earlier version 2). It sets `--standard-output`, for editors, so
+  `perltidy` prints the result instead of writing a `.tdy` file. To see
+  what it would change:
+
+  ```
+  perlbrew exec --quiet --with perl-5.36.3@dbix-squirrel-2 perltidy lib/DBIx/Squirrel.pm | diff lib/DBIx/Squirrel.pm -
+  ```
+
+- **Perl::Critic** reviews it, with `.perlcriticrc`: severity 3 and up,
+  core policies. Its comments say why each excluded policy is excluded;
+  `ProhibitVersionStrings` among them, since modules start `use v5.36`.
+
+  ```
+  perlbrew exec --with perl-5.36.3@dbix-squirrel-2 perlcritic lib
+  ```
+
+- **Data::Dump**'s `pp` is for looking at data while debugging, not for
+  the shipped modules or for test expectations (see Tests).
+
+All three are in the project's perlbrew library: Data::Dump 1.25,
+Perl::Critic 1.156 and Perl::Tidy 20260826, installed 2026-10-22, when
+both profiles were checked against a module with signatures.
+
 ## The name
 
 The repository is DBIx-Squirrel-2 while it's in development. At release
