@@ -1,0 +1,39 @@
+# Dist::Zilla's build directory and the distributions it builds
+/.build/
+/DBIx-Squirrel-*/
+/DBIx-Squirrel-*.tar.gz
+
+# ExtUtils::MakeMaker's build output
+/blib/
+/_eumm/
+/Makefile
+/Makefile.old
+/MYMETA.*
+/pm_to_blib
+/MANIFEST.bak
+
+# Modules installed locally, as by cpanm -L local
+/local/
+
+# Coverage (Devel::Cover) and profiling (Devel::NYTProf)
+/cover_db/
+/.last_cover_stats
+nytprof.out
+/nytprof/
+
+# perltidy backups
+*.tdy
+*.bak
+
+# PDFs of the documents, built on demand for reading offline
+*.pdf
+
+# Editors and the OS
+.DS_Store
+.vscode/
+.history/
+*~
+
+# Secrets for local testing: never committed
+.env
+.env.*

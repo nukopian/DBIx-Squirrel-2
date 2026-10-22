@@ -1,0 +1,7 @@
+Revision history for DBIx-Squirrel
+
+Unreleased
+
+    - The successor to 1.6.5 begins, in a fresh repository: a rewrite in
+      modern Perl, requiring Perl 5.36 or later. 1.x is archived in
+      https://github.com/nukopian/DBIx-Squirrel-1.
