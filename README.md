@@ -19,7 +19,7 @@ release it takes the original name, DBIx-Squirrel.
 
 Copyright (c) 2024 by Iain Campbell. This is free software; you can
 redistribute it and/or modify it under the same terms as the Perl 5
-programming language system itself. See [LICENSE](LICENSE).
+programming language system itself. See the file `LICENSE`.
 
 ## Acknowledgements
 

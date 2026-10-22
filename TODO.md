@@ -7,35 +7,37 @@ delete this file with the last one. It must be gone before a release.
 
 ## Set up the distribution with Minilla
 
-**What:** a Minilla distribution for DBIx-Squirrel (Iain chose Minilla
-over Dist::Zilla on 2026-10-22, for being simpler to come back to):
-`minil.toml`, a `cpanfile` with `requires 'perl', '5.036';` and the
-dependencies, the Perl 5 licence, and the generated `Build.PL` and
-`META.json` committed. Three things to settle from Minilla's own
-documentation, not from memory:
+**Waiting for Iain's first module,** `lib/DBIx/Squirrel.pm`, with a
+`$VERSION` and POD giving its NAME (the abstract), AUTHOR and LICENSE:
+Minilla can't build without it, and Iain writes the code.
 
-- **The repository URL.** Minilla takes it from the git remote by
-  default, which here would give DBIx-Squirrel-2. The metadata must
-  name the final URL, `https://github.com/nukopian/DBIx-Squirrel`, and
-  its issues (see CLAUDE.md, The name). Find how `minil.toml` overrides
-  it.
-- **The README.** Minilla writes `README.md` from the main module's POD,
-  which would replace the hand-written GitHub README. Decide with Iain:
-  keep the README hand-written (`readme_from`, or a separate file), or
-  let the POD be the README, with `badges` for CI.
-- **Releasing.** `minil release` commits, tags and uploads. Our releases
-  move `main` by a fast-forward and sign the tag from `Changes`, so find
-  how to keep the git steps ours (or make its tag signed) and let it
-  build and upload.
+**Done on 2026-10-22:** `minil.toml`, `cpanfile` and `README.pod`, with
+the three questions settled from Minilla 3.3.2's documentation and
+source (CLAUDE.md, Perl and The name, has the decisions):
 
-**Why:** the Perl CI jobs and the first module need the distribution to
-exist, and the release steps in docs/MAINTAINING.md depend on these
-answers.
+- **The repository URL** comes from the git remote, and can't be
+  overridden: `[Metadata]` is applied first, then the remote overwrites
+  `resources`. So `META.json` names DBIx-Squirrel-2 until the cut-over
+  renames the repository.
+- **The README** is written by hand in `README.pod` (`readme_from`),
+  and Minilla generates `README.md` from it, adding the CI badge.
+- **Releasing** uses `minil prepare VERSION` and `minil dist
+  --skip-prepare`, never `minil release`, which commits, makes an
+  unsigned tag and pushes. Uploading needs `cpan-upload`, from
+  CPAN::Uploader, which isn't installed: ask Iain before installing it,
+  in the MAINTAINING.md task.
 
-**Files:** `minil.toml`, `cpanfile`, `Build.PL`, `META.json`.
+**What's left:** once the module is there, `minil build` generates
+`Build.PL`, `META.json` and `README.md`; commit them, and check the
+generated `README.md` differs from the committed one only by the badge.
+
+**Why:** the Perl CI jobs need the distribution to exist, and the
+release steps in docs/MAINTAINING.md depend on it.
+
+**Files:** `Build.PL`, `META.json`, `README.md` (generated).
 
 **Done when:** `minil build` makes a distribution whose `META.json`
-names the final URL and requires Perl 5.036, `minil test` passes, and
+requires Perl 5.036, `minil test` passes, and
 in a fresh library without Minilla installed (a throwaway
 `cpanm -L` directory), `cpanm --installdeps --with-develop .` then
 `yath test` passes, and so does `prove -lr t`, which is what CPAN

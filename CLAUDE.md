@@ -67,7 +67,18 @@ what was Iain's.
   with the `Build.PL` and `META.json` it generates committed and a
   `cpanfile` listing the dependencies, so CI and `cpanm` from GitHub
   need nothing else. Follow its conventions rather than work around
-  them.
+  them. Three settings in `minil.toml` part from its defaults, decided
+  on 2026-10-22:
+  - **The README is written by hand in `README.pod`.** Minilla always
+    writes `README.md` from POD, so it's generated from that file, not
+    from the main module. Edit `README.pod`, never `README.md`.
+  - **`Changes` keeps its "Unreleased" heading** (`manage_changes =
+    false`), edited by hand at a release, rather than `{{$NEXT}}`.
+  - **The git steps of a release are ours.** `minil release` makes its
+    own commit and an unsigned tag, and pushes both, so releases don't
+    use it: `minil prepare VERSION` sets the version, we commit, move
+    `main` and sign the tag, `minil dist --skip-prepare` builds the
+    tarball, and `cpan-upload` uploads it.
 - Locally, Iain uses perlbrew with a library of the project's own,
   `perl-5.36.3@dbix-squirrel-2`, so its modules don't mix with other
   projects'. Whatever his default Perl is at the time, run commands with
@@ -219,8 +230,10 @@ both profiles were checked against a module with signatures.
 
 The repository is DBIx-Squirrel-2 while it's in development. At release
 it's renamed to DBIx-Squirrel, as the plan doc's "Cut-over to
-DBIx-Squirrel" section describes, and the distribution's metadata names
-that final URL from the start.
+DBIx-Squirrel" section describes. Minilla takes the repository and
+issues URLs in `META.json` from the git remote, with no setting to
+override them, so until then they name DBIx-Squirrel-2. The first
+release comes after the rename, so its metadata names the final URL.
 
 **Never create anything at `github.com/nukopian/DBIx-Squirrel`**, in any
 case: GitHub's names ignore case, so `dbix-squirrel` is the same name.
