@@ -36,14 +36,19 @@ answers.
 
 **Done when:** `minil build` makes a distribution whose `META.json`
 names the final URL and requires Perl 5.036, `minil test` passes, and
-`cpanm --installdeps . && prove -lr t` passes in a fresh perlbrew
-library without Minilla installed.
+in a fresh library without Minilla installed (a throwaway
+`cpanm -L` directory), `cpanm --installdeps --with-develop .` then
+`yath test` passes, and so does `prove -lr t`, which is what CPAN
+installers effectively run. The `cpanfile` lists Test2::V0 and
+Test2::Plugin::NoWarnings under `on test`, and Test2::Harness under
+`on develop`.
 
 ## Add the Perl tests to CI
 
 **What:** jobs in `.github/workflows/test.yml` that install the
-dependencies and run the tests on Perl 5.36, 5.38, 5.40 and 5.42 on
-Linux, and the newest Perl on macOS. Then add those jobs to `main`'s
+dependencies (`cpanm --installdeps --with-develop .`, so yath comes
+too) and run the tests with `yath test` on Perl 5.36, 5.38, 5.40 and
+5.42 on Linux, and the newest Perl on macOS. Then add those jobs to `main`'s
 required checks, beside `secrets`.
 
 **Why:** CLAUDE.md promises CI from the floor to the newest Perl, and

@@ -75,7 +75,7 @@ what was Iain's.
   switch` or `use`, which would change his shell:
 
   ```
-  perlbrew exec --with perl-5.36.3@dbix-squirrel-2 prove -lr t
+  perlbrew exec --with perl-5.36.3@dbix-squirrel-2 yath test
   ```
 
   5.38.5, 5.40.5 and 5.42.3 are installed too, for testing across the
@@ -153,6 +153,41 @@ POSTGRES_HOME=$A PATH=$A/bin:$PATH perlbrew exec --with perl-5.36.3@dbix-squirre
 Its tests start a temporary cluster of their own with `initdb`, so they
 run against a real server: 1,802 passed. Postgres.app must stay
 installed, as DBD::Pg links to its `libpq` by full path.
+
+## Tests
+
+- **Test2::V0, not Test::More,** in every test: `use Test2::V0;`, with
+  `is`, `like` and Test2's checks (`T()`, `F()`, `hash`, `array`) for
+  structures. Compare values, never Data::Dumper output: a boolean
+  dumps as `1` on Perl 5.36 and as `!!1` from 5.38.
+- **Test2::Plugin::NoWarnings** in each test file, so a warning fails
+  the test that caused it.
+- **yath, not prove,** runs them. It adds `lib`, `blib/lib` and
+  `blib/arch` itself, runs files in parallel, and keeps a log of each
+  run:
+
+  ```
+  perlbrew exec --with perl-5.36.3@dbix-squirrel-2 yath test
+  perlbrew exec --with perl-5.36.3@dbix-squirrel-2 yath test --cover
+  perlbrew exec --with perl-5.36.3@dbix-squirrel-2 cover -report text
+  ```
+
+  The second runs them under Devel::Cover, and the third prints the
+  coverage.
+- The core tests run on DBD::SQLite, so they need no server. Tests
+  against MySQL and PostgreSQL are extra, and skip without a database
+  to connect to; `Test2::Plugin::DBIProfile` can profile the DBI calls
+  a test makes.
+- Users installing from CPAN run the tests with whatever harness their
+  installer uses, so they must pass under `prove` too. yath is the
+  maintainers' choice, not a requirement.
+
+The library `perl-5.36.3@dbix-squirrel-2` has Test2::Harness (yath)
+1.000180 and the optional extras installed on 2026-10-22: coverage
+(Test2::Plugin::Cover, Devel::Cover), Test2::Plugin::IOEvents,
+DBIProfile, NoWarnings, MemUsage and UUID, Test2::Tools::Explain, and
+yath's suggested helpers (Cpanel::JSON::XS and JSON::MaybeXS for its
+logs, Term::ANSIColor, IO::Pager, Email::Stuffer).
 
 ## The name
 
