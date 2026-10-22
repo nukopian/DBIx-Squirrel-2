@@ -12,4 +12,5 @@ on develop => sub {
     requires 'Perl::Critic';
     requires 'Perl::Tidy';
     requires 'Test2::Harness';
+    requires 'UUID';
 };

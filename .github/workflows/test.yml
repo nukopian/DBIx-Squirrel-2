@@ -9,8 +9,49 @@ permissions:
   contents: read
 
 jobs:
-  # The Perl tests join this job once the distribution exists: Perl 5.36,
-  # the floor, to the newest, on Linux and macOS (TODO.md has the task).
+  # The tests on Perl 5.36, the floor, to the newest on Linux, and the
+  # newest on macOS. --with-develop brings yath and UUID with the rest.
+  perl:
+    name: perl ${{ matrix.perl }} (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04]
+        perl: ["5.36", "5.38", "5.40", "5.42"]
+        include:
+          - os: macos-26
+            perl: "5.42"
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: ${{ matrix.perl }}
+      - name: dependencies
+        run: cpanm --notest --installdeps --with-develop .
+      - name: yath
+        run: yath test
+
+  # Perl::Critic and Perl::Tidy, with the repository's profiles, on the
+  # newest Perl. A file perltidy would change fails, showing the diff.
+  style:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: shogo82148/actions-setup-perl@v1
+        with:
+          perl-version: "5.42"
+      - name: dependencies
+        run: cpanm --notest --installdeps --with-develop .
+      - name: perlcritic
+        run: perlcritic lib
+      - name: perltidy
+        run: |
+          status=0
+          for f in $(git ls-files 'lib/*.pm' 't/*.t'); do
+            perltidy "$f" | diff -u "$f" - || status=1
+          done
+          exit $status
 
   # Secrets in any commit, not only the latest: gitleaks over the whole
   # history, since all of it is published with the repository. Its release
