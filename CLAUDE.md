@@ -61,7 +61,13 @@ what was Iain's.
   still experimental in 5.36, so they need the floor raised to 5.40,
   deliberately, not by accident. CI tests from the floor to the newest
   Perl.
-- **Dist::Zilla** builds the distribution.
+- **Minilla** builds and releases the distribution. It's opinionated,
+  and that's why it was chosen over Dist::Zilla, whose configuration is
+  a tax on an occasional release: the repository is the distribution,
+  with the `Build.PL` and `META.json` it generates committed and a
+  `cpanfile` listing the dependencies, so CI and `cpanm` from GitHub
+  need nothing else. Follow its conventions rather than work around
+  them.
 - Locally, Iain uses perlbrew with a library of the project's own, so
   its modules don't mix with other projects'.
 
@@ -69,8 +75,8 @@ what was Iain's.
 
 The repository is DBIx-Squirrel-2 while it's in development. At release
 it's renamed to DBIx-Squirrel, as the plan doc's "Cut-over to
-DBIx-Squirrel" section describes, and `dist.ini` names that final URL
-from the start.
+DBIx-Squirrel" section describes, and the distribution's metadata names
+that final URL from the start.
 
 **Never create anything at `github.com/nukopian/DBIx-Squirrel`**, in any
 case: GitHub's names ignore case, so `dbix-squirrel` is the same name.

@@ -1,4 +1,4 @@
-# Dist::Zilla's build directory and the distributions it builds
+# The build directory and the distributions built from it
 /.build/
 /DBIx-Squirrel-*/
 /DBIx-Squirrel-*.tar.gz

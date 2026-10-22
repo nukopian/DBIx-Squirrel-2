@@ -21,22 +21,39 @@ DBIx-Squirrel-2.
 **Done when:** the plan doc has the findings, and v2 is archived with
 its note.
 
-## Set up the distribution with Dist::Zilla
+## Set up the distribution with Minilla
 
-**What:** a `dist.ini` for DBIx-Squirrel: Perl 5.36 as the minimum, the
-Perl 5 licence, and the repository and bug-tracker links naming the
-final URL, `https://github.com/nukopian/DBIx-Squirrel`, not
-DBIx-Squirrel-2 (see CLAUDE.md, The name). Decide with Iain whether to
-commit the generated `Makefile.PL` and `cpanfile`, as 1.x did, so that
-CI can test without installing Dist::Zilla.
+**What:** a Minilla distribution for DBIx-Squirrel (Iain chose Minilla
+over Dist::Zilla on 2026-10-22, for being simpler to come back to):
+`minil.toml`, a `cpanfile` with `requires 'perl', '5.036';` and the
+dependencies, the Perl 5 licence, and the generated `Build.PL` and
+`META.json` committed. Three things to settle from Minilla's own
+documentation, not from memory:
+
+- **The repository URL.** Minilla takes it from the git remote by
+  default, which here would give DBIx-Squirrel-2. The metadata must
+  name the final URL, `https://github.com/nukopian/DBIx-Squirrel`, and
+  its issues (see CLAUDE.md, The name). Find how `minil.toml` overrides
+  it.
+- **The README.** Minilla writes `README.md` from the main module's POD,
+  which would replace the hand-written GitHub README. Decide with Iain:
+  keep the README hand-written (`readme_from`, or a separate file), or
+  let the POD be the README, with `badges` for CI.
+- **Releasing.** `minil release` commits, tags and uploads. Our releases
+  move `main` by a fast-forward and sign the tag from `Changes`, so find
+  how to keep the git steps ours (or make its tag signed) and let it
+  build and upload.
 
 **Why:** the Perl CI jobs and the first module need the distribution to
-exist.
+exist, and the release steps in docs/MAINTAINING.md depend on these
+answers.
 
-**Files:** `dist.ini`, and `Makefile.PL` and `cpanfile` if committed.
+**Files:** `minil.toml`, `cpanfile`, `Build.PL`, `META.json`.
 
-**Done when:** `dzil build` makes a distribution whose `META.json` names
-the final URL and requires Perl 5.36, and `dzil test` passes.
+**Done when:** `minil build` makes a distribution whose `META.json`
+names the final URL and requires Perl 5.036, `minil test` passes, and
+`cpanm --installdeps . && prove -lr t` passes in a fresh perlbrew
+library without Minilla installed.
 
 ## Add the Perl tests to CI
 
@@ -55,7 +72,7 @@ repos/nukopian/DBIx-Squirrel-2/branches/main/protection --jq
 ## Write docs/MAINTAINING.md
 
 **What:** the maintainer's guide, as scalar's and grammar's are: branches,
-every commit, making a release (Dist::Zilla, a signed tag, a GitHub
+every commit, making a release (Minilla, a signed tag, a GitHub
 release and the CPAN upload), when something goes wrong, and the
 cut-over to DBIx-Squirrel from the plan doc, with paste-ready commands.
 
