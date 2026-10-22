@@ -8,6 +8,7 @@ on test => sub {
 };
 
 on develop => sub {
+    requires 'CPAN::Uploader';
     requires 'Data::Dump';
     requires 'Perl::Critic';
     requires 'Perl::Tidy';

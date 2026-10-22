@@ -225,6 +225,8 @@ logs, Term::ANSIColor, IO::Pager, Email::Stuffer).
 All three are in the project's perlbrew library: Data::Dump 1.25,
 Perl::Critic 1.156 and Perl::Tidy 20260826, installed 2026-10-22, when
 both profiles were checked against a module with signatures.
+CPAN::Uploader 0.103019, for `cpan-upload` at a release, joined them the
+same day.
 
 ## The name
 
