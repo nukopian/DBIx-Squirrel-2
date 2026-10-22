@@ -9,6 +9,9 @@ is. Each rule comes with the reason for it.
 Decisions still to be made, and the plan for the rewrite, are in the
 Claude Doc
 [DBIx-Squirrel successor: plan](https://claude.ai/artifact/1cnZmM5LRgpgX3F6sF8VqB).
+How the repository is kept, from every commit to a release on CPAN and
+the cut-over to the final name, is in
+[docs/MAINTAINING.md](docs/MAINTAINING.md), with commands to paste.
 
 ## What DBIx-Squirrel is for
 

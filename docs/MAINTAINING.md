@@ -1,0 +1,396 @@
+# Maintaining
+
+How DBIx-Squirrel is kept: its branches, releases to CPAN, the one-off
+cut-over to its final name, and the git and GitHub work done by hand.
+It's for whoever maintains it, Iain and Claude now. Every command can be
+pasted as it stands. The few that need a value say so on the line
+before, and set it in a variable on their first line.
+
+[scalar](https://github.com/nukopian/scalar) is kept the same way, and
+[its guide](https://github.com/nukopian/scalar/blob/main/docs/MAINTAINING.md)
+is where this one comes from. What's particular here is Perl: Minilla
+builds the distribution, and a release goes to CPAN.
+
+The working copy is `~/Git/github.com/nukopian/DBIx-Squirrel-2`, and Perl
+commands run in the project's perlbrew library, named on each command so
+they don't depend on the default Perl. [CLAUDE.md](../CLAUDE.md#perl) has
+the library, and how to build a Perl or the database drivers on Iain's Mac.
+
+## Branches
+
+- `develop` is where work happens. Every commit goes there, and CI runs
+  on every push to it.
+- `main` is the latest release, and nothing else. It moves only when a
+  release is made, by a fast-forward to `develop`, and the release's tag
+  is on it. Visitors to GitHub see `main`, so its README describes what
+  CPAN installs.
+- There are no feature branches, for now: changes are made one at a time.
+- `TODO.md`, when there is one, lists work planned for a later session.
+  It's committed on `develop` and gone before a release, so it never
+  reaches `main` ([CLAUDE.md](../CLAUDE.md#planned-work) has the rules).
+
+`main` is protected on GitHub. Pushes to it need signed commits, a linear
+history (no merge commits) and CI passing on every job, and it can't be
+force-pushed or deleted. This holds for admins too. To see the settings:
+
+```
+gh api repos/nukopian/DBIx-Squirrel-2/branches/main/protection --jq '{signatures: .required_signatures.enabled, linear: .required_linear_history.enabled, checks: .required_status_checks.contexts, force_push: .allow_force_pushes.enabled, admins: .enforce_admins.enabled}'
+```
+
+### A fresh clone
+
+The settings that sign commits are in the working copy's own
+`.git/config`, not the global one, so a fresh clone needs them before its
+first commit. Then switch to `develop`, and install the dependencies,
+the maintainers' tools among them, and Minilla, which builds the
+distribution. Minilla isn't in `cpanfile`, so that installing from it
+shows the distribution needs nothing else:
+
+```
+cd ~/Git/github.com/nukopian/DBIx-Squirrel-2
+git config user.name nukopian
+git config user.email nukopian@users.noreply.github.com
+git config user.signingkey /Users/icampbell/.ssh/github_nukopian_noreply_rsa.pub
+git config gpg.format ssh
+git config gpg.ssh.allowedsignersfile '~/.config/git/allowed_signers'
+git config commit.gpgsign true
+git fetch origin
+git switch develop
+git pull --ff-only
+perlbrew exec --with perl-5.36.3@dbix-squirrel-2 cpanm --installdeps --with-develop .
+perlbrew exec --with perl-5.36.3@dbix-squirrel-2 cpanm Minilla
+```
+
+## Every commit
+
+Run these first, and check that each one succeeds. Don't pipe them
+through `tail` or `grep` to judge them: the pipe's exit status is the
+last command's, and hides a failure. The perltidy loop is CI's style
+check: it prints a diff for each file perltidy would change.
+
+```
+cd ~/Git/github.com/nukopian/DBIx-Squirrel-2
+perlbrew exec --with perl-5.36.3@dbix-squirrel-2 yath test
+perlbrew exec --with perl-5.36.3@dbix-squirrel-2 perlcritic lib
+for f in $(git ls-files 'lib/*.pm' 't/*.t'); do perlbrew exec --quiet --with perl-5.36.3@dbix-squirrel-2 perltidy "$f" | diff -u "$f" -; done
+```
+
+`Build.PL`, `META.json` and `README.md` are generated, and committed so
+that `cpanm` can install from GitHub. After a change to `cpanfile`,
+`minil.toml`, `README.pod` or the main module's POD, generate them
+again, and commit what changes with the change that caused it:
+
+```
+cd ~/Git/github.com/nukopian/DBIx-Squirrel-2
+perlbrew exec --with perl-5.36.3@dbix-squirrel-2 minil build
+git status --short
+```
+
+Commits are signed, and use conventional prefixes (`feat:`, `fix:`,
+`docs:`, `test:`, `ci:`, `refactor:`, `chore:`), saying why as well as
+what. To check the signatures of the last ten (`G` is good, `N` is none):
+
+```
+git log --format='%h %G? %s' -10
+```
+
+Add what changed for users to `Changes` under Unreleased, in the same
+commit.
+
+## Making a release
+
+A release is a version on CPAN, and a signed, annotated tag on `main`
+with a GitHub release for it. Versions are dotted, as `v2.0.0`, in the
+main module's `$VERSION`, the tag and the tarball's name alike. Claude
+asks before tagging.
+
+Releases don't use `minil release`: it makes its own commit and an
+unsigned tag, and pushes both. `minil prepare` sets the version and
+`minil dist` builds the tarball, and the git steps are ours.
+
+The first release is also the cut-over to the name DBIx-Squirrel: do
+[The cut-over](#the-cut-over-first-release-only) between steps 1 and 2.
+
+1. **Check `develop`:** CI is green on its last commit, there's no
+   `TODO.md`, and the history has no secrets.
+
+   ```
+   cd ~/Git/github.com/nukopian/DBIx-Squirrel-2
+   git switch develop
+   git pull --ff-only
+   gh run list --branch develop --limit 1
+   if [ -e TODO.md ]; then cat TODO.md; else echo "no TODO.md"; fi
+   gitleaks git --redact --no-banner .
+   ```
+
+   If `TODO.md` is there, its tasks come first: do them, or move them
+   where CLAUDE.md says, and delete the file before going on.
+
+2. **Set the version.** `minil prepare` writes it into the main module,
+   and regenerates `META.json`, `Build.PL` and `README.md`. Set the
+   version on the first line:
+
+   ```
+   v=v2.0.0
+   cd ~/Git/github.com/nukopian/DBIx-Squirrel-2
+   perlbrew exec --with perl-5.36.3@dbix-squirrel-2 minil prepare "$v" </dev/null
+   git status --short
+   ```
+
+3. **Turn Unreleased into the release** in [Changes](../Changes): rename
+   the heading to the version and date, as `v2.0.0 2026-10-22`, start the
+   entry with a sentence that sums it up (it becomes the tag's title),
+   and add an empty Unreleased above it. The entry's lines stay indented
+   by four spaces:
+
+   ```
+   Unreleased
+
+   v2.0.0 2026-10-22
+
+       The successor to 1.6.5: a rewrite in modern Perl.
+
+       - Requires Perl 5.36 or later.
+   ```
+
+   Commit it with the version (`chore: release v2.0.0`), push, and wait
+   for CI.
+
+4. **Write the tag message from the entry,** and read it. The entry,
+   without its indent, is also the GitHub release's notes, and the tag
+   message is the same with the version in front. An empty file means
+   the heading doesn't match the version. Set the version on the first
+   line:
+
+   ```
+   v=v2.0.0
+   cd ~/Git/github.com/nukopian/DBIx-Squirrel-2
+   v=$v perl -0777 -ne 'print "$1\n" =~ s/^    //mgr if /^\Q$ENV{v}\E [^\n]*\n\n(.*?)\n*(?=^\S|\z)/ms' Changes > "$TMPDIR/notes-$v.txt"
+   sed "1s/^/$v: /" "$TMPDIR/notes-$v.txt" > "$TMPDIR/tag-$v.txt"
+   cat "$TMPDIR/tag-$v.txt"
+   ```
+
+5. **Move `main` and tag it.** First check that every check run on the
+   commit has completed successfully. `gh run watch` can report a run
+   as passed while one of its jobs is still marked in progress, and
+   `main`'s protection refuses the push until it isn't. Each check is
+   listed once, from `develop`'s push:
+
+   ```
+   cd ~/Git/github.com/nukopian/DBIx-Squirrel-2
+   gh api "repos/nukopian/DBIx-Squirrel-2/commits/$(git rev-parse develop)/check-runs" --jq '.check_runs[] | "\(.name) \(.status) \(.conclusion)"'
+   ```
+
+   Every line ends `completed success`; if one doesn't, see
+   [When something goes wrong](#when-something-goes-wrong). Then the
+   merge, which is a fast-forward, so `main` gets exactly the commits CI
+   tested on `develop`, with their signatures. Set the version on the
+   first line:
+
+   ```
+   v=v2.0.0
+   git switch main
+   git pull --ff-only
+   git merge --ff-only develop
+   git tag -s "$v" -F "$TMPDIR/tag-$v.txt"
+   git push origin main "$v"
+   gh release create "$v" --verify-tag --title "$(git tag -l --format='%(contents:subject)' "$v")" --notes-file "$TMPDIR/notes-$v.txt"
+   git switch develop
+   ```
+
+   `--verify-tag` refuses to make a tag of its own if the push didn't
+   happen. If the merge says it can't fast-forward, `main` has a commit
+   `develop` doesn't. Stop and find out why; don't make a merge commit.
+
+6. **Build the tarball and upload it to CPAN,** from the tag.
+   `minil dist` runs the tests again on the built distribution first.
+   `cpan-upload` reads the PAUSE account from `~/.pause`. Set the version
+   on the first line:
+
+   ```
+   v=v2.0.0
+   cd ~/Git/github.com/nukopian/DBIx-Squirrel-2
+   git switch --detach "$v"
+   perlbrew exec --with perl-5.36.3@dbix-squirrel-2 minil dist --skip-prepare
+   perlbrew exec --with perl-5.36.3@dbix-squirrel-2 cpan-upload "DBIx-Squirrel-$v.tar.gz"
+   git switch develop
+   rm "DBIx-Squirrel-$v.tar.gz"
+   ```
+
+7. **Check that CPAN has it.** PAUSE emails when it has indexed the
+   upload, usually within the hour. Then MetaCPAN shows the new version,
+   with the repository's URL:
+
+   ```
+   curl -sSf https://fastapi.metacpan.org/v1/release/DBIx-Squirrel | jq -r '"\(.name) \(.date) \(.resources.repository.web)"'
+   ```
+
+## The cut-over (first release only)
+
+The repository is DBIx-Squirrel-2 while it's in development, and takes
+the name DBIx-Squirrel at the first release, as the plan doc's "Cut-over
+to DBIx-Squirrel" section describes. Until then, that name redirects to
+the archived DBIx-Squirrel-1, which is how CPAN's links for 1.6.5 reach
+it. Never create anything there before the cut-over: the redirect would
+end early.
+
+Minilla takes the repository's URL in `META.json`, and the CI badge in
+`README.md`, from `origin`, so renaming first means the release's
+metadata names the final URL. On release day, after step 1:
+
+1. **Rename the repository on GitHub.** It works because GitHub lets a
+   repository take a name that is only a redirect; the redirect to
+   DBIx-Squirrel-1 ends at that moment, as intended, and GitHub then
+   redirects DBIx-Squirrel-2 to the new name. Ask Iain first.
+
+   ```
+   gh repo rename DBIx-Squirrel -R nukopian/DBIx-Squirrel-2 --yes
+   ```
+
+2. **Move the working copy to the new name.** The local `DBIx-Squirrel`
+   is a symlink to `DBIx-Squirrel-2`: remove it with `rm`, not `rm -r`,
+   so only the link goes. Then repoint `origin`:
+
+   ```
+   rm ~/Git/github.com/nukopian/DBIx-Squirrel
+   mv ~/Git/github.com/nukopian/DBIx-Squirrel-2 ~/Git/github.com/nukopian/DBIx-Squirrel
+   cd ~/Git/github.com/nukopian/DBIx-Squirrel
+   git remote set-url origin git@github.com:nukopian/DBIx-Squirrel.git
+   git fetch origin
+   ```
+
+   Re-add the folder in VS Code. The perlbrew library keeps its name,
+   `perl-5.36.3@dbix-squirrel-2`.
+
+3. **Update the text that names DBIx-Squirrel-2:** `README.pod`, which
+   says the repository is named so in development, `CLAUDE.md`, and this
+   guide, whose commands then use the new name and path. Commit, and go
+   on with step 2 of the release, whose `minil prepare` regenerates
+   `META.json` and `README.md` from the new `origin`. Before committing
+   the release, nothing generated should name the old repository, so
+   this prints nothing:
+
+   ```
+   cd ~/Git/github.com/nukopian/DBIx-Squirrel
+   grep -n 'DBIx-Squirrel-2' META.json README.md Build.PL
+   ```
+
+`main`'s protection and required checks move with the rename. Check
+them with the command under [Branches](#branches), using the new name.
+
+## Changing the CI matrix
+
+`main` requires each CI job by its name, as `perl 5.42 (macos-26)`, so a
+new Perl, or a new runner, means changing the required checks to match.
+Otherwise `main` waits for a check that never reports, and can't move.
+After the new jobs have passed once on `develop`, change the list here
+to the jobs' names, and run it; it replaces the whole list, so `secrets`
+and `style` stay in it. It's a GitHub setting, so Iain runs it, or says
+Claude may:
+
+```
+gh api --method PATCH repos/nukopian/DBIx-Squirrel-2/branches/main/protection/required_status_checks --silent --input - <<'EOF'
+{
+  "strict": false,
+  "checks": [
+    {"context": "secrets", "app_id": 15368},
+    {"context": "perl 5.36 (ubuntu-24.04)", "app_id": 15368},
+    {"context": "perl 5.38 (ubuntu-24.04)", "app_id": 15368},
+    {"context": "perl 5.40 (ubuntu-24.04)", "app_id": 15368},
+    {"context": "perl 5.42 (ubuntu-24.04)", "app_id": 15368},
+    {"context": "perl 5.42 (macos-26)", "app_id": 15368},
+    {"context": "style", "app_id": 15368}
+  ]
+}
+EOF
+gh api repos/nukopian/DBIx-Squirrel-2/branches/main/protection --jq .required_status_checks.contexts
+```
+
+`15368` is GitHub Actions, so only a job of this repository's workflows
+can satisfy a check. When the floor moves up, from Perl 5.36 to 5.40 for
+`try`/`catch`, the oldest jobs go, from the matrix and this list alike.
+
+## When something goes wrong
+
+- **A bad commit pushed to `develop`:** fix it in a new commit, or revert
+  it with `git revert`, and push. Don't force-push: Iain reviews what's
+  pushed, and a rewrite moves it under him.
+- **A mistake in a pushed commit message:** leave it, and correct it in
+  the next release's entry in `Changes`.
+- **A bad release:** never move or delete a published tag, and never
+  reuse a version. PAUSE refuses a file name it has had before, even one
+  deleted since. Release a fixed version instead. To keep the bad one
+  from being installed meanwhile, delete it from CPAN on PAUSE
+  (`https://pause.perl.org`, "Delete Files"); it goes after three days,
+  and stays on BackPAN.
+- **An upload refused or lost:** if PAUSE never had the file, run
+  `cpan-upload` again with the same tarball. If it did, the version is
+  spent: release the next one.
+- **`cpan-upload --dry-run` prints the PAUSE password,** with or without
+  `--verbose`. Don't run it where the output is shared or logged.
+- **A commit made on `main` by mistake,** before it's pushed: move it to
+  `develop`, and put `main` back. Do this only if `main` hasn't been pushed
+  since:
+
+  ```
+  git switch develop
+  git cherry-pick main
+  git branch -f main origin/main
+  ```
+
+- **A push to `main` refused:** the protection did its job. Push to
+  `develop` instead, or, at a release, wait for CI to pass on the commit.
+- **A check stuck "in progress"** after all its steps passed: GitHub never
+  marked it complete. Re-run that job alone. This finds every unfinished
+  check on `develop`'s commit and re-runs it:
+
+  ```
+  cd ~/Git/github.com/nukopian/DBIx-Squirrel-2
+  gh api "repos/nukopian/DBIx-Squirrel-2/commits/$(git rev-parse develop)/check-runs" --jq '.check_runs[] | select(.status != "completed") | .details_url' | sed -E 's|.*/runs/([0-9]+)/job/([0-9]+).*|\1 \2|' | while read run job; do gh run rerun "$run" --job "$job"; done
+  ```
+
+  Then check the check runs again, as in step 5.
+- **`main` refused after the tag went up:** `git push origin main "$v"`
+  sends both, so the tag can be published while `main` is refused. Leave
+  the tag as it is: it points at the right commit. Fix the check, then
+  push `main` to the tagged commit, make the release, and go on with
+  step 6. Set the version on the first line:
+
+  ```
+  v=v2.0.0
+  cd ~/Git/github.com/nukopian/DBIx-Squirrel-2
+  git switch main
+  git merge --ff-only "$v"
+  git push origin main
+  gh release create "$v" --verify-tag --title "$(git tag -l --format='%(contents:subject)' "$v")" --notes-file "$TMPDIR/notes-$v.txt"
+  git switch develop
+  ```
+
+## Security checks
+
+- **gitleaks** scans the whole history for secrets on every push, in
+  `test.yml`'s `secrets` job, and by hand before a tag (step 1).
+- **Secret scanning and push protection** are on: push protection
+  refuses a push with a recognised secret in it, before gitleaks would
+  see it.
+- **Dependabot alerts** are on, and **Dependabot security updates** are
+  off on purpose: they open pull requests against `main`, which moves
+  only at a release. Dependabot doesn't read a `cpanfile`, so its alerts
+  cover the workflow's actions, not the Perl dependencies.
+
+To see the settings, and any open alerts:
+
+```
+gh api repos/nukopian/DBIx-Squirrel-2 --jq '.security_and_analysis | to_entries[] | "\(.key) \(.value.status)"'
+gh api repos/nukopian/DBIx-Squirrel-2/vulnerability-alerts --silent && echo "Dependabot alerts on"
+gh api repos/nukopian/DBIx-Squirrel-2/dependabot/alerts --jq '.[] | select(.state == "open") | "\(.number) \(.security_advisory.summary)"'
+gh api repos/nukopian/DBIx-Squirrel-2/secret-scanning/alerts --jq '.[] | select(.state == "open") | "\(.number) \(.secret_type_display_name)"'
+```
+
+## Tools
+
+The project's perlbrew library, with Minilla and the dependencies in
+`cpanfile` (yath, Perl::Critic, Perl::Tidy and CPAN::Uploader among them),
+`gh`, `gitleaks`, `jq`, and for the PDFs, `pandoc` and Prince.
+`scripts/readme-pdf.sh` builds a PDF of the README and of this guide,
+for reading offline; the PDFs are git-ignored.
