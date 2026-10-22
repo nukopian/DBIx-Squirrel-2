@@ -11,7 +11,3 @@ badges = ["github-actions/test.yml"]
 # Changes keeps an "Unreleased" heading, edited by hand at a release,
 # rather than Minilla's {{$NEXT}}.
 manage_changes = false
-
-# The README's source isn't part of the distribution; README.md is.
-[FileGatherer]
-exclude_match = ['^README\.pod$']
