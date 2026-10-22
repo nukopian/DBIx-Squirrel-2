@@ -53,6 +53,12 @@ AI from scalar's partnership.
   them, currently
   `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - The README's Acknowledgements say what Claude did. Keep them accurate.
+- **On CPAN, Iain is `Iain Campbell <cpanic@cpan.org>`,** and no other
+  address goes in the distribution: the main module's AUTHOR and so
+  `META.json`. Commits use his GitHub noreply address, which GitHub
+  needs to verify their signatures, so `.mailmap` maps it to the CPAN
+  one. Minilla reads authors through it, and would otherwise list Iain
+  as a contributor to his own distribution.
 
 Why: credit goes where the work was done, so a reader can see exactly
 what was Iain's.

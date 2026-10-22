@@ -1,7 +1,7 @@
 {
    "abstract" : "DBI, minus the boilerplate, plus a pipeline",
    "author" : [
-      "Iain Campbell"
+      "Iain Campbell <cpanic@cpan.org>"
    ],
    "dynamic_config" : 0,
    "generated_by" : "Minilla/v3.3.2",
@@ -73,9 +73,6 @@
       }
    },
    "version" : "v2.0.0",
-   "x_contributors" : [
-      "nukopian <nukopian@users.noreply.github.com>"
-   ],
    "x_serialization_backend" : "JSON::PP version 4.18",
    "x_static_install" : 1
 }
