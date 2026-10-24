@@ -35,5 +35,6 @@ nytprof.out
 *~
 
 # Secrets for local testing: never committed
+.envrc
 .env
 .env.*
