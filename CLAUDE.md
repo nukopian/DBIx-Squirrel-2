@@ -66,10 +66,14 @@ what was Iain's.
 ## Perl
 
 - **Perl 5.36 or later.** Modules start `use v5.36`, which gives strict,
-  warnings, `say` and signatures. `try`/`catch` and `builtin::` are
-  still experimental in 5.36, so they need the floor raised to 5.40,
-  deliberately, not by accident. CI tests from the floor to the newest
-  Perl.
+  warnings, `say` and signatures. `try`/`catch` is still experimental
+  in 5.36, and is used anyway, as decided on 2026-10-28: a module that
+  needs it adds `use experimental qw(try);`, which also allows
+  `finally`. Once the floor reaches 5.40, `use v5.40` turns on
+  `try`/`catch` by itself, and the line is needed only for `finally`.
+  `builtin::` is experimental too, and still needs the floor raised to
+  5.40, deliberately, not by accident. CI tests from the floor to the
+  newest Perl.
 - **Minilla** builds and releases the distribution. It's opinionated,
   and that's why it was chosen over Dist::Zilla, whose configuration is
   a tax on an occasional release: the repository is the distribution,
