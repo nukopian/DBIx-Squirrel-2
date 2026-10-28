@@ -10,20 +10,17 @@ package My::Squirrel {
 
 my $here = 'at ' . __FILE__ . ' line';
 
-subtest 'stages run in order, each given the invocant' => sub {
+subtest 'values flow along the branch, and the invocant comes back' => sub {
     my $self = bless {}, 'My::Squirrel';
     my @seen;
     my $result = $self->tap(
-        sub ($s) { push @seen, ['a', $s] },
-        b => sub ($s) { push @seen, ['b', $s] },
-        sub ($s) { push @seen, ['c', $s] },
+        sub ($s) { push @seen, ['a', $s]; (1, 2) },
+        b => sub (@v) { push @seen, ['b', @v]; 3 },
+        sub (@v) { push @seen, ['c', @v]; 'dropped' },
     );
-    is \@seen, [
-        ['a', exact_ref($self)],
-        ['b', exact_ref($self)],
-        ['c', exact_ref($self)],
-    ];
-    ref_is $result, $self, 'returns the invocant';
+    is \@seen, [['a', exact_ref($self)], ['b', 1, 2], ['c', 3]],
+        'the first stage gets the invocant, the rest what came before';
+    ref_is $result, $self, 'returns the invocant, not the results';
 };
 
 subtest 'as a class method' => sub {
@@ -32,26 +29,35 @@ subtest 'as a class method' => sub {
         push @seen, $s;
     });
     is $result, 'DBIx::Squirrel',   'returns the class';
-    is \@seen,  ['DBIx::Squirrel'], 'stages get the class';
+    is \@seen,  ['DBIx::Squirrel'], 'the first stage gets the class';
 };
 
 subtest 'no stages' => sub {
     is DBIx::Squirrel->tap, 'DBIx::Squirrel', 'returns the invocant';
 };
 
-subtest 'what stages return is ignored' => sub {
+subtest 'an empty return ends the branch' => sub {
     my @ran;
-    DBIx::Squirrel->tap(
+    my $result = DBIx::Squirrel->tap(
         sub { push @ran, 'a'; return },
-        sub { push @ran, 'b'; return (undef,  'stop') },
-        sub { push @ran, 'c'; return (0,      0) },
-        sub { push @ran, 'd'; return ('row1', 'row2') },
-        sub { push @ran, 'e' },
+        sub { push @ran, 'b' },
     );
-    is \@ran, [qw(a b c d e)], 'every stage runs';
+    is \@ran,   ['a'],            "later stages don't run";
+    is $result, 'DBIx::Squirrel', 'returns the invocant';
 };
 
-subtest 'Stop ends the stages quietly' => sub {
+subtest 'undef and other false values are passed on' => sub {
+    my @seen;
+    DBIx::Squirrel->tap(
+        sub { undef },
+        sub (@v) { push @seen, [@v]; 0 },
+        sub (@v) { push @seen, [@v]; '' },
+        sub (@v) { push @seen, [@v] },
+    );
+    is \@seen, [[undef], [0], ['']];
+};
+
+subtest 'Stop ends the branch quietly' => sub {
     my %ways = (
         'fully qualified' => sub { DBIx::Squirrel::Stop() },
         'class method'    => sub { DBIx::Squirrel->Stop },
@@ -62,7 +68,7 @@ subtest 'Stop ends the stages quietly' => sub {
         my $result;
         ok lives {
             $result = DBIx::Squirrel->tap(
-                sub { push @ran, 'a' },
+                sub { push @ran, 'a'; 1 },
                 sub { push @ran, 'b'; $ways{$way}->(); push @ran, 'b-after' },
                 sub { push @ran, 'c' },
             );
@@ -73,12 +79,12 @@ subtest 'Stop ends the stages quietly' => sub {
 };
 
 subtest 'a failing stage is named in the error' => sub {
-    my $named   = "A tap stage (#2: b) failed: boom\n";
-    my $unnamed = "A tap stage (#1) failed: boom\n";
+    my $named   = "tap (#2: b) failed: boom\n";
+    my $unnamed = "tap (#1) failed: boom\n";
     my @ran;
     like dies {
         DBIx::Squirrel->tap(
-            sub { push @ran, 'a' },
+            sub { push @ran, 'a'; 1 },
             b => sub { die "boom\n" },
             sub { push @ran, 'c' },
         );
