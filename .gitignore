@@ -38,3 +38,4 @@ nytprof.out
 .envrc
 .env
 .env.*
+*.code-workspace
