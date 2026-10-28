@@ -2,6 +2,10 @@ Revision history for DBIx-Squirrel
 
 Unreleased
 
+    - connect croaks on failure, and clones an existing database
+      handle passed in place of a data source.
+    - tap runs stages on a handle for their side effects; Stop ends
+      them early.
     - The successor to 1.6.5 begins, in a fresh repository: a rewrite in
       modern Perl, requiring Perl 5.36 or later. 1.x is archived in
       https://github.com/nukopian/DBIx-Squirrel-1.
