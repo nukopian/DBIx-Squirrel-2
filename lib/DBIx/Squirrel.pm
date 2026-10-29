@@ -108,8 +108,6 @@ sub _pairs_of_named_stages ($stages = []) {
     return \@pairs;
 }
 
-sub Stop (@) { return DBIx::Squirrel::Stop::->throw() }
-
 1;
 
 __END__
