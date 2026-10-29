@@ -3,9 +3,14 @@ use Test2::V0;
 use Test2::Plugin::NoWarnings;
 
 use DBIx::Squirrel;
+use DBIx::Squirrel::Stop qw(Stop);
 
 package My::Squirrel {
     our @ISA = 'DBIx::Squirrel';
+}
+
+package My::Stop {
+    our @ISA = 'DBIx::Squirrel::Stop';
 }
 
 my $here = 'at ' . __FILE__ . ' line';
@@ -59,9 +64,9 @@ subtest 'undef and other false values are passed on' => sub {
 
 subtest 'Stop ends the branch quietly' => sub {
     my %ways = (
-        'fully qualified' => sub { DBIx::Squirrel::Stop() },
-        'class method'    => sub { DBIx::Squirrel->Stop },
-        'subclass method' => sub { My::Squirrel->Stop },
+        'exported' => sub { Stop() },
+        'thrown'   => sub { DBIx::Squirrel::Stop->throw },
+        'subclass' => sub { My::Stop->throw },
     );
     for my $way (sort keys %ways) {
         my @ran;
@@ -105,7 +110,7 @@ subtest 'invalid stages fail before any stage runs' => sub {
 };
 
 subtest 'Stop outside a pipeline' => sub {
-    my $error = dies { DBIx::Squirrel->Stop };
+    my $error = dies { Stop() };
     isa_ok $error, ['DBIx::Squirrel::Stop'], 'dies with the Stop object';
     is "$error", "Stop used outside a pipeline\n", 'which explains itself';
 };
