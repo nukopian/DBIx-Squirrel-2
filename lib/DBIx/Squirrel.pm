@@ -121,6 +121,7 @@ DBIx::Squirrel - DBI, minus the boilerplate, plus a pipeline
 =head1 SYNOPSIS
 
     use DBIx::Squirrel;
+    use DBIx::Squirrel::Stop qw(Stop);
 
     my $dbh = DBIx::Squirrel->connect($data_source, $username, $password, \%attr);
 
@@ -131,7 +132,7 @@ DBIx::Squirrel - DBI, minus the boilerplate, plus a pipeline
     my @results = DBIx::Squirrel->and_then(
         sub ($invocant) { ... },
         'a named stage' => sub (@values) { ... },
-        sub (@values) { DBIx::Squirrel->Stop if $done; ... },
+        sub (@values) { Stop() if $done; ... },
     );
 
     # The same, as a branch off to the side: get the invocant back
@@ -274,13 +275,16 @@ stage, and the stages after it don't run:
 
 =head2 Stop
 
-    DBIx::Squirrel->Stop;
-    DBIx::Squirrel::Stop();
+    use DBIx::Squirrel::Stop qw(Stop);
+    Stop();
+
+    DBIx::Squirrel::Stop->throw;
 
 Called from a stage of L</and_then> or L</tap>, ends the stages quietly:
 the rest of that stage, and the stages after it, don't run, and the
-method returns as usual. It can be called as a class method, including
-on a subclass, or as a function by its full name.
+method returns as usual. C<Stop> is exported by L<DBIx::Squirrel::Stop>
+on request; C<< DBIx::Squirrel::Stop->throw >> does the same without
+importing it.
 
 Stop works by throwing an exception, which C<and_then> and C<tap>
 catch. So a stage that catches errors itself, with C<eval> or C<try>,
@@ -295,6 +299,7 @@ should throw a stop on again:
     }
 
 Called outside a stage, it dies with "Stop used outside a pipeline".
+L<DBIx::Squirrel::Stop> says more, including what a stop carries.
 
 =head1 DIAGNOSTICS
 
@@ -327,7 +332,7 @@ it.
 
 =head1 SEE ALSO
 
-L<DBI>
+L<DBI>, L<DBIx::Squirrel::Stop>
 
 =head1 AUTHOR
 
