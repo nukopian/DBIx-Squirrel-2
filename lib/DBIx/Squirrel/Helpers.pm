@@ -10,7 +10,7 @@ our @CARP_NOT  = qw(DBIx::Squirrel);
 our @EXPORT_OK = qw(pipeline_ordered_stages);
 
 # Return a list of closures as a list of pairs of named closures.
-sub pipeline_ordered_stages (@stages) {
+sub pipeline_stages (@stages) {
     my @pipeline;
     for (my $n = 1; @stages; $n += 1) {
         my $s = shift @stages;

@@ -2,12 +2,12 @@ use v5.36;
 use Test2::V0;
 use Test2::Plugin::NoWarnings;
 
-use DBIx::Squirrel::Helpers qw(pipeline_ordered_stages);
+use DBIx::Squirrel::Helpers qw(pipeline_stages);
 
 my $f = sub { 'f' };
 my $g = sub { 'g' };
 
-sub pipeline (@stages) { [pipeline_ordered_stages(@stages)] }
+sub pipeline (@stages) { [pipeline_stages(@stages)] }
 
 subtest 'unnamed stages are numbered by position' => sub {
     is pipeline($f), ['#1' => exact_ref($f)], 'one stage';
@@ -36,7 +36,7 @@ subtest 'no stages' => sub {
 
 subtest 'the stages passed in are left unchanged' => sub {
     my @stages = ('a', $f, $g);
-    pipeline_ordered_stages(@stages);
+    pipeline_stages(@stages);
     is \@stages, ['a', exact_ref($f), exact_ref($g)], 'list';
 };
 
@@ -56,7 +56,7 @@ subtest 'invalid stages' => sub {
     like dies { pipeline([$f]) }, qr/^\Q$bad_ref\E/x,
         'an array reference of stages is not unpacked';
 
-    like dies { pipeline_ordered_stages('a') }, qr/^\Q$no_stage $here\E/x,
+    like dies { pipeline_stages('a') }, qr/^\Q$no_stage $here\E/x,
         'reported at the caller';
 };
 
