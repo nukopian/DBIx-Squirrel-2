@@ -4,18 +4,10 @@ Unreleased
 
     - connect croaks on failure, and clones an existing database
       handle passed in place of a data source.
-    - pipe runs a list of stages as a pipeline: each stage gets what
-      the one before returned, and pipe returns what the last one
-      returned. A stage returning an empty list ends the pipeline;
-      Stop ends it early, keeping the values reached.
     - Stop comes from DBIx::Squirrel::Stop, exported automatically. A
       stage calls Stop(...) or DBIx::Squirrel::Stop->throw(...), and
       the Stop carries the arguments given. A subclass of
       DBIx::Squirrel::Stop stops a pipeline too.
-    - tap runs the same kind of pipeline as a branch off to the side,
-      for its side effects, and returns its invocant.
-    - A stage can be named, and a failing stage is named in the
-      error.
     - The successor to 1.6.5 begins, in a fresh repository: a rewrite in
       modern Perl, requiring Perl 5.36 or later. 1.x is archived in
       https://github.com/nukopian/DBIx-Squirrel-1.

@@ -8,7 +8,7 @@ use Carp      qw(croak);
 use DBI       qw();
 use Ref::Util qw(is_hashref);
 
-use DBIx::Squirrel::Helpers qw(pipeline_stages);
+use DBIx::Squirrel::Helpers qw(order_stages);
 use DBIx::Squirrel::Stop    qw();
 
 our @ISA     = 'DBI';
@@ -57,7 +57,7 @@ sub _connect_dbh ($class, $dbh, @args) {
 # Run a queue of closures against the database-handle.
 sub pipe ($self, @stages) {    ## no critic (Subroutines::ProhibitBuiltinHomonyms)
     my @res      = $self;
-    my @pipeline = pipeline_stages(@stages);
+    my @pipeline = order_stages(@stages);
     while (@pipeline) {
         my($id, $stage) = splice @pipeline, 0, 2;
         try {
@@ -76,7 +76,7 @@ sub pipe ($self, @stages) {    ## no critic (Subroutines::ProhibitBuiltinHomonym
 # side-effects.
 sub tap ($self, @stages) {
     my @res      = $self;
-    my @pipeline = pipeline_stages(@stages);
+    my @pipeline = order_stages(@stages);
     while (@pipeline) {
         my($id, $stage) = splice @pipeline, 0, 2;
         try {
@@ -104,25 +104,11 @@ DBIx::Squirrel - DBI, minus the boilerplate, plus a pipeline
 =head1 SYNOPSIS
 
     use DBIx::Squirrel;
-    use DBIx::Squirrel::Stop;
 
     my $dbh = DBIx::Squirrel->connect($data_source, $username, $password, \%attr);
 
     # A new connection with the same parameters as an existing one
     my $other = DBIx::Squirrel->connect($dbh, \%attr);
-
-    # Pass values from stage to stage, and get the last stage's results
-    my @results = DBIx::Squirrel->pipe(
-        sub ($invocant) { ... },
-        'a named stage' => sub (@values) { ... },
-        sub (@values) { Stop() if $done; ... },
-    );
-
-    # The same, as a branch off to the side: get the invocant back
-    my $invocant = DBIx::Squirrel->tap(
-        sub ($invocant) { ... },
-        sub (@values)   { ... },
-    );
 
 =head1 DESCRIPTION
 
@@ -178,84 +164,6 @@ C<connect_cached> is the DBI's own, unchanged. The DBI's C<connect_cached>
 calls C<connect> when it needs a new connection, so it croaks on failure
 too.
 
-=head2 pipe
-
-    @results = $invocant->pipe(@stages);
-    $result  = $invocant->pipe(@stages);
-
-Runs a list of stages as a pipeline, and returns what the last one
-returned.
-
-Each stage is a code reference. The first is called with the invocant,
-and each one after it with whatever the stage before returned, so a
-stage can pass on one value, several, or none:
-
-    use List::Util qw(sum);
-
-    my $total = DBIx::Squirrel->pipe(
-        sub ($invocant) { (3, 4, 5) },
-        sub (@numbers)  { sum(@numbers) },
-        'double it' => sub ($sum) { $sum * 2 },
-    );    # 24
-
-A string before a stage names it, for error messages, as with
-C<'double it'> above. Stages are numbered by position, from C<#1>,
-whether they're named or not.
-
-A stage that returns an empty list ends the pipeline: the stages after
-it don't run, and C<pipe> returns an empty list. Any other return
-carries on, including C<undef> and other false values, which are
-passed on like any other. To end the pipeline early and keep the
-values reached so far, call L</Stop>: C<pipe> then returns what the
-stage before the stopping one returned.
-
-Called in list context, C<pipe> returns all the values. In scalar
-context, it returns the first, or C<undef> if there are none.
-
-A stage is called with as many arguments as the stage before returned,
-so a stage after one that returns a list should accept a list, as
-C<sub (@numbers)> does above. A signature for fewer arguments dies,
-which C<pipe> reports as the stage failing.
-
-If a stage dies, C<pipe> croaks at the line that called it, naming
-the stage, and the stages after it don't run:
-
-    pipe (#3: double it) failed: ...
-
-=head2 tap
-
-    $invocant = $invocant->tap(@stages);
-
-Runs a list of stages as a branch off to the side, for their side
-effects, and returns the invocant, so that a chain of method calls can
-carry on after it.
-
-The stages work as they do in L</pipe>: the first is called with
-the invocant, each one after it with what the stage before returned,
-and an empty list or L</Stop> ends the branch early. The difference is
-that the branch's results are dropped, and C<tap> returns the invocant
-however the branch ended.
-
-    $invocant ───┬───▶ $invocant
-                 │
-                 └───▶ stage #1 ───▶ stage #2 ───▶ ...
-
-For example, to log a report on the invocant, then carry on with it:
-
-    $invocant->tap(
-        sub ($invocant) { $invocant->report },
-        sub ($report)   { log_report($report) },
-    )->carry_on;
-
-A stage passes on whatever its last statement gives, even one run for
-its side effects. So each stage except the last should return what the
-next one needs; the last can return anything.
-
-If a stage dies, C<tap> croaks at the line that called it, naming the
-stage, and the stages after it don't run:
-
-    tap (#2) failed: ...
-
 =head2 Stop
 
     use DBIx::Squirrel::Stop;
@@ -263,14 +171,12 @@ stage, and the stages after it don't run:
 
     DBIx::Squirrel::Stop->throw;
 
-Called from a stage of L</pipe> or L</tap>, ends the stages quietly:
-the rest of that stage, and the stages after it, don't run, and the
-method returns as usual. C<Stop> is exported automatically by
+Called from a stage of a pipeline, ends the pipeline quietly: the rest
+of that stage, and the stages after it, don't run. C<Stop> is exported automatically by
 L<DBIx::Squirrel::Stop>; C<< DBIx::Squirrel::Stop->throw >> does the same
 without importing it.
 
-Stop works by throwing an exception, which C<pipe> and C<tap>
-catch. So a stage that catches errors itself, with C<eval> or C<try>,
+Stop works by throwing an exception, which the pipeline catches. So a stage that catches errors itself, with C<eval> or C<try>,
 should throw a stop on again:
 
     sub ($invocant) {
@@ -288,28 +194,9 @@ L<DBIx::Squirrel::Stop> says more, including what a stop carries.
 
 =over
 
-=item pipe (%s) failed: %s
-
-=item tap (%s) failed: %s
-
-A stage passed to L</pipe> or L</tap> died. The part in brackets
-names the stage, by its position and any name given to it; the rest is
-the stage's error.
-
-=item Expected a code-reference to follow a non-reference
-
-A name was passed to L</pipe> or L</tap> with no stage after it.
-No stage runs.
-
-=item Expected a code-reference or non-reference
-
-Something passed to L</pipe> or L</tap> was neither a stage nor a
-name, such as an array or hash reference. No stage runs.
-
 =item Stop used outside a pipeline
 
-L</Stop> was called where no C<pipe> or C<tap> was running to catch
-it.
+L</Stop> was called where no pipeline was running to catch it.
 
 =back
 

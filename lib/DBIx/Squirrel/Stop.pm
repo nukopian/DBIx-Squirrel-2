@@ -32,25 +32,19 @@ DBIx::Squirrel::Stop - end a DBIx::Squirrel pipeline early
 
 =head1 SYNOPSIS
 
-    use DBIx::Squirrel;
     use DBIx::Squirrel::Stop;
 
-    my @results = DBIx::Squirrel->pipe(
-        sub ($invocant) { ... },
-        sub (@values)   { Stop() if $done; ... },
-        sub (@values)   { ... },
-    );
+    # In a stage of a pipeline
+    sub (@values) { Stop() if $done; ... }
 
     # The same, without importing Stop
     sub (@values) { DBIx::Squirrel::Stop->throw if $done; ... }
 
 =head1 DESCRIPTION
 
-A stop is the exception that ends the stages of
-L<DBIx::Squirrel/pipe> or L<DBIx::Squirrel/tap> early and quietly:
-the rest of the stage that throws it, and the stages after it, don't
-run, and the method returns as usual. C<pipe> returns what the
-stage before the stopping one returned; C<tap> returns its invocant.
+A stop is the exception that ends a DBIx::Squirrel pipeline early and
+quietly: the rest of the stage that throws it, and the stages after
+it, don't run.
 
 =head1 FUNCTIONS
 
@@ -87,7 +81,7 @@ is that class, and the rest are the data it was thrown with:
     eval { DBIx::Squirrel::Stop->throw(1, 2) };
     my $stop = $@;    # bless ['DBIx::Squirrel::Stop', 1, 2], 'DBIx::Squirrel::Stop'
 
-C<pipe> and C<tap> don't use the data. It's there for code that
+A pipeline doesn't use the data. It's there for code that
 catches a stop itself.
 
 As a string, a stop is "Stop used outside a pipeline", with a newline,
@@ -95,8 +89,8 @@ which is what a user sees if one is thrown with nothing to catch it.
 
 =head2 Catching errors in a stage
 
-C<pipe> and C<tap> recognise a stop with C<isa>, so a subclass of
-DBIx::Squirrel::Stop stops them too. A stage that catches errors
+A pipeline recognises a stop with C<isa>, so a subclass of
+DBIx::Squirrel::Stop stops it too. A stage that catches errors
 itself, with C<eval> or C<try>, should throw a stop on again:
 
     sub ($invocant) {
@@ -113,8 +107,7 @@ itself, with C<eval> or C<try>, should throw a stop on again:
 
 =item Stop used outside a pipeline
 
-A stop was thrown where no C<pipe> or C<tap> was running to catch
-it.
+A stop was thrown where no pipeline was running to catch it.
 
 =back
 
