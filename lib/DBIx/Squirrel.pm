@@ -6,7 +6,7 @@ use experimental qw(try);
 
 use Carp      qw(croak);
 use DBI       qw();
-use Ref::Util qw(is_coderef is_hashref);
+use Ref::Util qw(is_arrayref is_coderef is_hashref);
 
 use DBIx::Squirrel::Stop qw();
 
@@ -53,10 +53,10 @@ sub _connect_dbh ($class, $dbh, @args) {
 
 # Run a queue of closures against the database-handle.
 sub and_then ($self, @stages) {
-    my @queue = _pairs_of_named_stages(\@stages)->@*;
-    my @res   = $self;
-    while (@queue) {
-        my($id, $stage) = splice @queue, 0, 2;
+    my @res      = $self;
+    my @pipeline = _pipeline_of_named_stages(\@stages)->@*;
+    while (@pipeline) {
+        my($id, $stage) = splice @pipeline, 0, 2;
         try {
             @res = $stage->(@res);
             last unless @res;
@@ -72,10 +72,10 @@ sub and_then ($self, @stages) {
 # Run a queue of closures against the database-handle for their
 # side-effects.
 sub tap ($self, @stages) {
-    my @queue = _pairs_of_named_stages(\@stages)->@*;
-    my @res   = $self;
-    while (@queue) {
-        my($id, $stage) = splice @queue, 0, 2;
+    my @res      = $self;
+    my @pipeline = _pipeline_of_named_stages(\@stages)->@*;
+    while (@pipeline) {
+        my($id, $stage) = splice @pipeline, 0, 2;
         try {
             @res = $stage->(@res);
             last unless @res;
@@ -89,23 +89,24 @@ sub tap ($self, @stages) {
 }
 
 # Return a list of closures as a list of pairs of named closures.
-sub _pairs_of_named_stages ($stages = []) {
-    my @stages = @$stages;
-    my @pairs;
-    my $pos = 0;
+sub _pipeline_of_named_stages (@args) {
+    my @pipeline;
+    my $wantarrayref = @args == 1 && is_arrayref($args[0]);
+    my @stages       = $wantarrayref ? @{ $args[0] } : @args;
+    my $p            = 0;
     while (@stages) {
-        my $next = shift @stages;
-        $pos += 1;
-        if (is_coderef($next)) {
-            push @pairs, ("#$pos" => $next);
+        my $s = shift @stages;
+        $p += 1;
+        if (is_coderef($s)) {
+            push @pipeline, ("#$p" => $s);
             next;
         }
-        croak "Expected a code-reference or non-reference" if ref $next;
+        croak "Expected a code-reference or non-reference" if ref $s;
         croak "Expected a code-reference to follow a non-reference"
             unless @stages && is_coderef($stages[0]);
-        push @pairs, ((length($next) ? "#$pos: $next" : "#$pos") => shift @stages);
+        push @pipeline, ((length($s) ? "#$p: $s" : "#$p") => shift @stages);
     }
-    return \@pairs;
+    return $wantarrayref ? \@pipeline : @pipeline;
 }
 
 1;
