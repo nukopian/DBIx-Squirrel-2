@@ -14,11 +14,13 @@ our @ISA     = 'DBI';
 our $VERSION = 'v2.0.0';
 
 # Return the handle of the connection to the requested data source.
-sub connect ($class, @args) {
-    return _connect_dbh($class, @args)
-        if @args && $args[0] isa 'DBI::db';
+sub connect ($class, $source, @args) {
+    return _connect_dbh($class, $source, @args)
+        if $source isa 'DBI::db';
 
-    my($source, $username, $password) = splice @args, 0, 3;
+    my($username, $password);
+    $username = shift @args unless is_hashref($args[0]);
+    $password = shift @args unless is_hashref($args[0]);
 
     my $attrs = @args && is_hashref($args[0]) ? shift @args : {};
 
