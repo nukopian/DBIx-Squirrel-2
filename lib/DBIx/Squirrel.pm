@@ -6,9 +6,10 @@ use experimental qw(try);
 
 use Carp      qw(croak);
 use DBI       qw();
-use Ref::Util qw(is_arrayref is_coderef is_hashref);
+use Ref::Util qw(is_hashref);
 
-use DBIx::Squirrel::Stop qw();
+use DBIx::Squirrel::Helpers qw(pipeline_ordered_stages);
+use DBIx::Squirrel::Stop    qw();
 
 our @ISA     = 'DBI';
 our $VERSION = 'v2.0.0';
@@ -56,7 +57,7 @@ sub _connect_dbh ($class, $dbh, @args) {
 # Run a queue of closures against the database-handle.
 sub pipe ($self, @stages) {    ## no critic (Subroutines::ProhibitBuiltinHomonyms)
     my @res      = $self;
-    my @pipeline = _pipeline_of_named_stages(\@stages)->@*;
+    my @pipeline = pipeline_ordered_stages(\@stages)->@*;
     while (@pipeline) {
         my($id, $stage) = splice @pipeline, 0, 2;
         try {
@@ -75,7 +76,7 @@ sub pipe ($self, @stages) {    ## no critic (Subroutines::ProhibitBuiltinHomonym
 # side-effects.
 sub tap ($self, @stages) {
     my @res      = $self;
-    my @pipeline = _pipeline_of_named_stages(\@stages)->@*;
+    my @pipeline = pipeline_ordered_stages(\@stages)->@*;
     while (@pipeline) {
         my($id, $stage) = splice @pipeline, 0, 2;
         try {
@@ -88,27 +89,6 @@ sub tap ($self, @stages) {
         }
     }
     return $self;
-}
-
-# Return a list of closures as a list of pairs of named closures.
-sub _pipeline_of_named_stages (@args) {
-    my @pipeline;
-    my $wantarrayref = @args == 1 && is_arrayref($args[0]);
-    my @stages       = $wantarrayref ? @{ $args[0] } : @args;
-    my $p            = 0;
-    while (@stages) {
-        my $s = shift @stages;
-        $p += 1;
-        if (is_coderef($s)) {
-            push @pipeline, ("#$p" => $s);
-            next;
-        }
-        croak "Expected a code-reference or non-reference" if ref $s;
-        croak "Expected a code-reference to follow a non-reference"
-            unless @stages && is_coderef($stages[0]);
-        push @pipeline, ((length($s) ? "#$p: $s" : "#$p") => shift @stages);
-    }
-    return $wantarrayref ? \@pipeline : @pipeline;
 }
 
 1;

@@ -2,9 +2,9 @@ use v5.36;
 use Test2::V0;
 use Test2::Plugin::NoWarnings;
 
-use DBIx::Squirrel;
+use DBIx::Squirrel::Helpers qw(pipeline_ordered_stages);
 
-my $pipeline_of = DBIx::Squirrel->can('_pipeline_of_named_stages');
+my $pipeline_of = \&pipeline_ordered_stages;
 
 my $f = sub { 'f' };
 my $g = sub { 'g' };
