@@ -8,7 +8,7 @@ Unreleased
       what the one before returned, and and_then returns what the
       last one returned. A stage returning an empty list ends the
       pipeline; Stop ends it early, keeping the values reached.
-    - Stop comes from DBIx::Squirrel::Stop, exported on request. A
+    - Stop comes from DBIx::Squirrel::Stop, exported automatically. A
       stage calls Stop(...) or DBIx::Squirrel::Stop->throw(...), and
       the Stop carries the arguments given. A subclass of
       DBIx::Squirrel::Stop stops a pipeline too.

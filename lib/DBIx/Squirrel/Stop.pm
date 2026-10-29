@@ -7,7 +7,7 @@ use overload '""' => sub { "Stop used outside a pipeline\n" }, fallback => 1;
 use Carp     qw(croak);
 use Exporter qw(import);
 
-our @EXPORT_OK = qw(Stop);
+our @EXPORT = qw(Stop);    ## no critic (Modules::ProhibitAutomaticExportation)
 
 # Syntactic sugar throwing the exception that stops a pipeline early.
 sub Stop (@data) {
@@ -33,7 +33,7 @@ DBIx::Squirrel::Stop - end a DBIx::Squirrel pipeline early
 =head1 SYNOPSIS
 
     use DBIx::Squirrel;
-    use DBIx::Squirrel::Stop qw(Stop);
+    use DBIx::Squirrel::Stop;
 
     my @results = DBIx::Squirrel->and_then(
         sub ($invocant) { ... },
@@ -60,10 +60,12 @@ stage before the stopping one returned; C<tap> returns its invocant.
     Stop(@data);
 
 Throws a stop carrying C<@data>. It's the same as
-C<< DBIx::Squirrel::Stop->throw(@data) >>, and is exported only on
-request:
+C<< DBIx::Squirrel::Stop->throw(@data) >>, and is exported by
+default.
 
-    use DBIx::Squirrel::Stop qw(Stop);
+To keep it out of your namespace:
+
+    use DBIx::Squirrel::Stop ();
 
 =head1 METHODS
 

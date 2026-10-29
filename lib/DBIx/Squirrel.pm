@@ -124,7 +124,7 @@ DBIx::Squirrel - DBI, minus the boilerplate, plus a pipeline
 =head1 SYNOPSIS
 
     use DBIx::Squirrel;
-    use DBIx::Squirrel::Stop qw(Stop);
+    use DBIx::Squirrel::Stop;
 
     my $dbh = DBIx::Squirrel->connect($data_source, $username, $password, \%attr);
 
@@ -278,16 +278,16 @@ stage, and the stages after it don't run:
 
 =head2 Stop
 
-    use DBIx::Squirrel::Stop qw(Stop);
+    use DBIx::Squirrel::Stop;
     Stop();
 
     DBIx::Squirrel::Stop->throw;
 
 Called from a stage of L</and_then> or L</tap>, ends the stages quietly:
 the rest of that stage, and the stages after it, don't run, and the
-method returns as usual. C<Stop> is exported by L<DBIx::Squirrel::Stop>
-on request; C<< DBIx::Squirrel::Stop->throw >> does the same without
-importing it.
+method returns as usual. C<Stop> is exported automatically by
+L<DBIx::Squirrel::Stop>; C<< DBIx::Squirrel::Stop->throw >> does the same
+without importing it.
 
 Stop works by throwing an exception, which C<and_then> and C<tap>
 catch. So a stage that catches errors itself, with C<eval> or C<try>,

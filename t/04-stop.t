@@ -2,7 +2,7 @@ use v5.36;
 use Test2::V0;
 use Test2::Plugin::NoWarnings;
 
-use DBIx::Squirrel::Stop qw(Stop);
+use DBIx::Squirrel::Stop;
 
 package My::Stop {
     our @ISA = 'DBIx::Squirrel::Stop';
@@ -31,13 +31,17 @@ subtest 'throw called on an unrelated class makes a plain Stop' => sub {
     is $stop,      ['DBIx::Squirrel::Stop', 3], 'carrying its arguments';
 };
 
-subtest 'Stop is exported only on request' => sub {
+subtest 'Stop is exported by default' => sub {
 
-    package Not::Importing {
+    package Importing {    ## no critic (Modules::ProhibitMultiplePackages)
         use DBIx::Squirrel::Stop;
     }
-    ok !Not::Importing->can('Stop'), 'not by default';
-    ok main->can('Stop'),            'when asked for';
+    ok Importing->can('Stop'), 'by default';
+
+    package Not::Importing {    ## no critic (Modules::ProhibitMultiplePackages)
+        use DBIx::Squirrel::Stop ();
+    }
+    ok !Not::Importing->can('Stop'), 'not when told not to';
 };
 
 subtest 'a Stop explains itself as a string' => sub {

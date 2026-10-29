@@ -3,7 +3,7 @@ use Test2::V0;
 use Test2::Plugin::NoWarnings;
 
 use DBIx::Squirrel;
-use DBIx::Squirrel::Stop qw(Stop);
+use DBIx::Squirrel::Stop;
 
 package My::Squirrel {
     our @ISA = 'DBIx::Squirrel';
