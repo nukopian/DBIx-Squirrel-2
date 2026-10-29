@@ -54,7 +54,7 @@ sub _connect_dbh ($class, $dbh, @args) {
 }
 
 # Run a queue of closures against the database-handle.
-sub and_then ($self, @stages) {
+sub pipe ($self, @stages) {    ## no critic (Subroutines::ProhibitBuiltinHomonyms)
     my @res      = $self;
     my @pipeline = _pipeline_of_named_stages(\@stages)->@*;
     while (@pipeline) {
@@ -65,7 +65,7 @@ sub and_then ($self, @stages) {
         }
         catch ($e) {
             last if $e isa 'DBIx::Squirrel::Stop';
-            croak "and_then ($id) failed: $e";
+            croak "pipe ($id) failed: $e";
         }
     }
     return wantarray ? @res : $res[0];
@@ -132,7 +132,7 @@ DBIx::Squirrel - DBI, minus the boilerplate, plus a pipeline
     my $other = DBIx::Squirrel->connect($dbh, \%attr);
 
     # Pass values from stage to stage, and get the last stage's results
-    my @results = DBIx::Squirrel->and_then(
+    my @results = DBIx::Squirrel->pipe(
         sub ($invocant) { ... },
         'a named stage' => sub (@values) { ... },
         sub (@values) { Stop() if $done; ... },
@@ -198,10 +198,10 @@ C<connect_cached> is the DBI's own, unchanged. The DBI's C<connect_cached>
 calls C<connect> when it needs a new connection, so it croaks on failure
 too.
 
-=head2 and_then
+=head2 pipe
 
-    @results = $invocant->and_then(@stages);
-    $result  = $invocant->and_then(@stages);
+    @results = $invocant->pipe(@stages);
+    $result  = $invocant->pipe(@stages);
 
 Runs a list of stages as a pipeline, and returns what the last one
 returned.
@@ -212,7 +212,7 @@ stage can pass on one value, several, or none:
 
     use List::Util qw(sum);
 
-    my $total = DBIx::Squirrel->and_then(
+    my $total = DBIx::Squirrel->pipe(
         sub ($invocant) { (3, 4, 5) },
         sub (@numbers)  { sum(@numbers) },
         'double it' => sub ($sum) { $sum * 2 },
@@ -223,24 +223,24 @@ C<'double it'> above. Stages are numbered by position, from C<#1>,
 whether they're named or not.
 
 A stage that returns an empty list ends the pipeline: the stages after
-it don't run, and C<and_then> returns an empty list. Any other return
+it don't run, and C<pipe> returns an empty list. Any other return
 carries on, including C<undef> and other false values, which are
 passed on like any other. To end the pipeline early and keep the
-values reached so far, call L</Stop>: C<and_then> then returns what the
+values reached so far, call L</Stop>: C<pipe> then returns what the
 stage before the stopping one returned.
 
-Called in list context, C<and_then> returns all the values. In scalar
+Called in list context, C<pipe> returns all the values. In scalar
 context, it returns the first, or C<undef> if there are none.
 
 A stage is called with as many arguments as the stage before returned,
 so a stage after one that returns a list should accept a list, as
 C<sub (@numbers)> does above. A signature for fewer arguments dies,
-which C<and_then> reports as the stage failing.
+which C<pipe> reports as the stage failing.
 
-If a stage dies, C<and_then> croaks at the line that called it, naming
+If a stage dies, C<pipe> croaks at the line that called it, naming
 the stage, and the stages after it don't run:
 
-    and_then (#3: double it) failed: ...
+    pipe (#3: double it) failed: ...
 
 =head2 tap
 
@@ -250,7 +250,7 @@ Runs a list of stages as a branch off to the side, for their side
 effects, and returns the invocant, so that a chain of method calls can
 carry on after it.
 
-The stages work as they do in L</and_then>: the first is called with
+The stages work as they do in L</pipe>: the first is called with
 the invocant, each one after it with what the stage before returned,
 and an empty list or L</Stop> ends the branch early. The difference is
 that the branch's results are dropped, and C<tap> returns the invocant
@@ -283,13 +283,13 @@ stage, and the stages after it don't run:
 
     DBIx::Squirrel::Stop->throw;
 
-Called from a stage of L</and_then> or L</tap>, ends the stages quietly:
+Called from a stage of L</pipe> or L</tap>, ends the stages quietly:
 the rest of that stage, and the stages after it, don't run, and the
 method returns as usual. C<Stop> is exported automatically by
 L<DBIx::Squirrel::Stop>; C<< DBIx::Squirrel::Stop->throw >> does the same
 without importing it.
 
-Stop works by throwing an exception, which C<and_then> and C<tap>
+Stop works by throwing an exception, which C<pipe> and C<tap>
 catch. So a stage that catches errors itself, with C<eval> or C<try>,
 should throw a stop on again:
 
@@ -308,27 +308,27 @@ L<DBIx::Squirrel::Stop> says more, including what a stop carries.
 
 =over
 
-=item and_then (%s) failed: %s
+=item pipe (%s) failed: %s
 
 =item tap (%s) failed: %s
 
-A stage passed to L</and_then> or L</tap> died. The part in brackets
+A stage passed to L</pipe> or L</tap> died. The part in brackets
 names the stage, by its position and any name given to it; the rest is
 the stage's error.
 
 =item Expected a code-reference to follow a non-reference
 
-A name was passed to L</and_then> or L</tap> with no stage after it.
+A name was passed to L</pipe> or L</tap> with no stage after it.
 No stage runs.
 
 =item Expected a code-reference or non-reference
 
-Something passed to L</and_then> or L</tap> was neither a stage nor a
+Something passed to L</pipe> or L</tap> was neither a stage nor a
 name, such as an array or hash reference. No stage runs.
 
 =item Stop used outside a pipeline
 
-L</Stop> was called where no C<and_then> or C<tap> was running to catch
+L</Stop> was called where no C<pipe> or C<tap> was running to catch
 it.
 
 =back

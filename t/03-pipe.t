@@ -18,7 +18,7 @@ my $here = 'at ' . __FILE__ . ' line';
 subtest 'values flow from stage to stage' => sub {
     my $self = bless {}, 'My::Squirrel';
     my @seen;
-    my @results = $self->and_then(
+    my @results = $self->pipe(
         sub ($s) { push @seen, ['a', $s]; (3, 4, 5) },
         b => sub (@v) { push @seen, ['b', @v]; $v[0] + $v[1] + $v[2] },
         sub ($sum) { push @seen, ['c', $sum]; $sum * 2 },
@@ -30,14 +30,14 @@ subtest 'values flow from stage to stage' => sub {
 
 subtest 'list and scalar context' => sub {
     my @stages = (sub { (5, 6, 7) });
-    is [DBIx::Squirrel->and_then(@stages)],       [5, 6, 7], 'list: every value';
-    is scalar(DBIx::Squirrel->and_then(@stages)), 5, 'scalar: the first value';
-    is scalar(DBIx::Squirrel->and_then(sub { 42 })), 42,
+    is [DBIx::Squirrel->pipe(@stages)],       [5, 6, 7], 'list: every value';
+    is scalar(DBIx::Squirrel->pipe(@stages)), 5,         'scalar: the first value';
+    is scalar(DBIx::Squirrel->pipe(sub { 42 })), 42,
         'scalar: a single value';
 };
 
 subtest 'no stages' => sub {
-    is scalar(DBIx::Squirrel->and_then), 'DBIx::Squirrel',
+    is scalar(DBIx::Squirrel->pipe), 'DBIx::Squirrel',
         'returns the invocant';
 };
 
@@ -47,14 +47,14 @@ subtest 'an empty return ends the pipeline' => sub {
         sub { push @ran, 'a'; return },
         sub { push @ran, 'b'; 'never' },
     );
-    is [DBIx::Squirrel->and_then(@stages)],       [],    'list: an empty list';
-    is \@ran,                                     ['a'], "later stages don't run";
-    is scalar(DBIx::Squirrel->and_then(@stages)), undef, 'scalar: undef';
+    is [DBIx::Squirrel->pipe(@stages)],       [],    'list: an empty list';
+    is \@ran,                                 ['a'], "later stages don't run";
+    is scalar(DBIx::Squirrel->pipe(@stages)), undef, 'scalar: undef';
 };
 
 subtest 'undef and other false values are passed on' => sub {
     my @seen;
-    my @results = DBIx::Squirrel->and_then(
+    my @results = DBIx::Squirrel->pipe(
         sub { undef },
         sub (@v) { push @seen, [@v]; 0 },
         sub (@v) { push @seen, [@v]; '' },
@@ -74,7 +74,7 @@ subtest 'Stop ends the pipeline, keeping the values reached' => sub {
         my @ran;
         my @results;
         ok lives {
-            @results = DBIx::Squirrel->and_then(
+            @results = DBIx::Squirrel->pipe(
                 sub { push @ran, 'a'; ('kept', 'too') },
                 sub { push @ran, 'b'; $ways{$way}->(); push @ran, 'b-after' },
                 sub { push @ran, 'c' },
@@ -86,18 +86,18 @@ subtest 'Stop ends the pipeline, keeping the values reached' => sub {
 };
 
 subtest 'a stage given more arguments than it takes fails' => sub {
-    my $too_many = 'and_then (#2) failed: Too many arguments';
+    my $too_many = 'pipe (#2) failed: Too many arguments';
     like dies {
-        DBIx::Squirrel->and_then(sub { (1, 2, 3) }, sub ($one) { $one });
+        DBIx::Squirrel->pipe(sub { (1, 2, 3) }, sub ($one) { $one });
     }, qr/^\Q$too_many\E/x;
 };
 
 subtest 'a failing stage is named in the error' => sub {
-    my $named   = "and_then (#2: b) failed: boom\n";
-    my $unnamed = "and_then (#1) failed: boom\n";
+    my $named   = "pipe (#2: b) failed: boom\n";
+    my $unnamed = "pipe (#1) failed: boom\n";
     my @ran;
     like dies {
-        DBIx::Squirrel->and_then(
+        DBIx::Squirrel->pipe(
             sub { push @ran, 'a'; 1 },
             b => sub { die "boom\n" },
             sub { push @ran, 'c' },
@@ -106,14 +106,14 @@ subtest 'a failing stage is named in the error' => sub {
     is \@ran, ['a'], "later stages don't run";
 
     like dies {
-        DBIx::Squirrel->and_then(sub { die "boom\n" });
+        DBIx::Squirrel->pipe(sub { die "boom\n" });
     }, qr/^\Q$unnamed\E/x, 'unnamed stage';
 };
 
 subtest 'invalid stages fail before any stage runs' => sub {
     my @ran;
     like dies {
-        DBIx::Squirrel->and_then(sub { push @ran, 'a' }, 'b');
+        DBIx::Squirrel->pipe(sub { push @ran, 'a' }, 'b');
     }, qr/^\QExpected a code-reference to follow a non-reference $here\E/x;
     is \@ran, [], 'no stage ran';
 };
