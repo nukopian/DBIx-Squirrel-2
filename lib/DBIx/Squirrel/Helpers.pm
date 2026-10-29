@@ -10,24 +10,20 @@ our @CARP_NOT  = qw(DBIx::Squirrel);
 our @EXPORT_OK = qw(pipeline_ordered_stages);
 
 # Return a list of closures as a list of pairs of named closures.
-sub pipeline_ordered_stages (@args) {
+sub pipeline_ordered_stages (@stages) {
     my @pipeline;
-    my $wantarrayref = @args == 1 && is_arrayref($args[0]);
-    my @stages       = $wantarrayref ? $args[0]->@* : @args;
-    my $p            = 0;
-    while (@stages) {
+    for (my $n = 1; @stages; $n += 1) {
         my $s = shift @stages;
-        $p += 1;
         if (is_coderef($s)) {
-            push @pipeline, ("#$p" => $s);
+            push @pipeline, ("#$n" => $s);
             next;
         }
         croak "Expected a code-reference or non-reference" if ref $s;
         croak "Expected a code-reference to follow a non-reference"
             unless @stages && is_coderef($stages[0]);
-        push @pipeline, ((length($s) ? "#$p: $s" : "#$p") => shift @stages);
+        push @pipeline, ((length($s) ? "#$n: $s" : "#$n") => shift @stages);
     }
-    return $wantarrayref ? \@pipeline : @pipeline;
+    return @pipeline;
 }
 
 1;

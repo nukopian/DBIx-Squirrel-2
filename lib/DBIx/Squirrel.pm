@@ -57,7 +57,7 @@ sub _connect_dbh ($class, $dbh, @args) {
 # Run a queue of closures against the database-handle.
 sub pipe ($self, @stages) {    ## no critic (Subroutines::ProhibitBuiltinHomonyms)
     my @res      = $self;
-    my @pipeline = pipeline_ordered_stages(\@stages)->@*;
+    my @pipeline = pipeline_ordered_stages(@stages);
     while (@pipeline) {
         my($id, $stage) = splice @pipeline, 0, 2;
         try {
@@ -76,7 +76,7 @@ sub pipe ($self, @stages) {    ## no critic (Subroutines::ProhibitBuiltinHomonym
 # side-effects.
 sub tap ($self, @stages) {
     my @res      = $self;
-    my @pipeline = pipeline_ordered_stages(\@stages)->@*;
+    my @pipeline = pipeline_ordered_stages(@stages);
     while (@pipeline) {
         my($id, $stage) = splice @pipeline, 0, 2;
         try {
