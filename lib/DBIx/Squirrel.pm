@@ -2,8 +2,6 @@ use v5.36;
 
 package DBIx::Squirrel;
 
-use experimental qw(try);
-
 use Carp      qw(croak);
 use DBI       qw();
 use Ref::Util qw(is_hashref);
@@ -55,40 +53,16 @@ sub _connect_dbh ($class, $dbh, @args) {
     return $dbh;
 }
 
-# Run a queue of closures against the database-handle.
+# Run the invocant through a pipeline of stages.
 sub pipe ($self, @stages) {    ## no critic (Subroutines::ProhibitBuiltinHomonyms)
-    my @res      = $self;
-    my @pipeline = order_stages(@stages);
-    while (@pipeline) {
-        my($id, $stage) = splice @pipeline, 0, 2;
-        try {
-            @res = $stage->(@res);
-            last unless @res;
-        }
-        catch ($e) {
-            last if $e isa 'DBIx::Squirrel::Stop';
-            croak "pipe ($id) failed: $e";
-        }
-    }
+    my @res = DBIx::Squirrel::Pipeline->new(@stages)->($self);
     return wantarray ? @res : $res[0];
 }
 
-# Run a queue of closures against the database-handle for their
-# side-effects.
+# Run the invocant through a pipeline of stages for their side-effects, and
+# return the invocant.
 sub tap ($self, @stages) {
-    my @res      = $self;
-    my @pipeline = order_stages(@stages);
-    while (@pipeline) {
-        my($id, $stage) = splice @pipeline, 0, 2;
-        try {
-            @res = $stage->(@res);
-            last unless @res;
-        }
-        catch ($e) {
-            last if $e isa 'DBIx::Squirrel::Stop';
-            croak "tap ($id) failed: $e";
-        }
-    }
+    DBIx::Squirrel::Pipeline->new(@stages)->($self);
     return $self;
 }
 
@@ -110,6 +84,18 @@ DBIx::Squirrel - DBI, minus the boilerplate, plus a pipeline
 
     # A new connection with the same parameters as an existing one
     my $other = DBIx::Squirrel->connect($dbh, \%attr);
+
+    # Run the invocant through a pipeline of stages
+    my @results = DBIx::Squirrel->pipe(
+        sub ($invocant) { ... },
+        sub ($value)    { ... },
+    );
+
+    # The same, as a branch off to the side: get the invocant back
+    my $invocant = DBIx::Squirrel->tap(
+        sub ($invocant) { ... },
+        sub ($value)    { ... },
+    );
 
 =head1 DESCRIPTION
 
@@ -165,6 +151,68 @@ C<connect_cached> is the DBI's own, unchanged. The DBI's C<connect_cached>
 calls C<connect> when it needs a new connection, so it croaks on failure
 too.
 
+=head2 pipe
+
+    @results = $invocant->pipe(@stages);
+    $result  = $invocant->pipe(@stages);
+
+Runs the invocant through a pipeline of stages, and returns what comes
+out of the last one.
+
+Each stage is a code reference, called with one value, as its argument
+and in C<$_>. The first is called with the invocant. A stage returns
+nothing to drop the value, one value to pass it on, or several, each of
+which goes through the rest of the stages on its own:
+
+    my @odd_doubled = DBIx::Squirrel->pipe(
+        sub ($invocant) { (3, 4, 5) },
+        sub { $_ % 2 ? $_ : () },
+        sub { $_ * 2 },
+    );    # (6, 10)
+
+To end the pipeline early, call L</Stop>. With no stages, C<pipe>
+returns the invocant.
+
+Called in list context, C<pipe> returns all the values. In scalar
+context, it returns the first, or C<undef> if there are none.
+
+If a stage dies, C<pipe> croaks at the line that called it, naming the
+stage by its position, from C<#1>:
+
+    Pipeline stage #2 failed at script.pl line 12:
+        ...
+
+L<DBIx::Squirrel::Pipeline> says more about stages.
+
+=head2 tap
+
+    $invocant = $invocant->tap(@stages);
+
+Runs the invocant through a pipeline of stages, as a branch off to the
+side for their side effects, and returns the invocant, so that a chain
+of method calls can carry on after it.
+
+    $invocant ───┬───▶ $invocant
+                 │
+                 └───▶ stage #1 ───▶ stage #2 ───▶ ...
+
+The stages work as they do in L</pipe>; what comes out of the last one
+is dropped. For example, to log a report on the invocant, then carry on
+with it:
+
+    $invocant->tap(
+        sub ($invocant) { $invocant->report },
+        sub ($report)   { log_report($report) },
+    )->carry_on;
+
+A stage passes on whatever its last statement gives, even one run for
+its side effects, so each stage except the last should return what the
+next one needs.
+
+C<tap> returns the invocant however the stages end: having run out of
+values, been stopped with L</Stop>, or with no stages at all. If a
+stage dies, C<tap> croaks at the line that called it, as L</pipe> does.
+
 =head2 Stop
 
     use DBIx::Squirrel::Stop;
@@ -198,6 +246,16 @@ L<DBIx::Squirrel::Stop> says more, including what a stop carries.
 
 =over
 
+=item Pipeline stage #%d failed at %s line %d:
+
+A stage passed to L</pipe> or L</tap> died. The message it died with
+follows, indented.
+
+=item Stage #%d is not a code-reference
+
+Something passed to L</pipe> or L</tap> wasn't a code reference. No
+stage runs.
+
 =item Stop used outside a pipeline
 
 L</Stop> was called where no pipeline was running to catch it.
@@ -206,7 +264,7 @@ L</Stop> was called where no pipeline was running to catch it.
 
 =head1 SEE ALSO
 
-L<DBI>, L<DBIx::Squirrel::Stop>
+L<DBI>, L<DBIx::Squirrel::Pipeline>, L<DBIx::Squirrel::Stop>
 
 =head1 AUTHOR
 
