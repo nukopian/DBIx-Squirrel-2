@@ -18,11 +18,9 @@ sub connect ($class, $source, @args) {
     return _connect_dbh($class, $source, @args)
         if $source isa 'DBI::db';
 
-    my($username, $password);
-    $username = shift @args unless is_hashref($args[0]);
-    $password = shift @args unless is_hashref($args[0]);
-
-    my $attrs = @args && is_hashref($args[0]) ? shift @args : {};
+    my $username = is_hashref($args[0]) ? undef       : shift @args;
+    my $password = is_hashref($args[0]) ? undef       : shift @args;
+    my $attrs    = is_hashref($args[0]) ? shift @args : {};
 
     my $dbh = $class->SUPER::connect(
         $source,
