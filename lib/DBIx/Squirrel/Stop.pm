@@ -35,26 +35,31 @@ DBIx::Squirrel::Stop - end a DBIx::Squirrel pipeline early
     use DBIx::Squirrel::Stop;
 
     # In a stage of a pipeline
-    sub (@values) { Stop() if $done; ... }
+    sub ($row) { Stop() if $done; ... }
+
+    # Stop, passing on a last value
+    sub ($row) { $row->{id} == $wanted ? Stop($row) : () }
 
     # The same, without importing Stop
-    sub (@values) { DBIx::Squirrel::Stop->throw if $done; ... }
+    sub ($row) { DBIx::Squirrel::Stop->throw if $done; ... }
 
 =head1 DESCRIPTION
 
 A stop is the exception that ends a DBIx::Squirrel pipeline early and
-quietly: the rest of the stage that throws it, and the stages after
-it, don't run.
+quietly. The rest of the stage that throws it doesn't run. The values
+already out of the pipeline are kept, the values the stop carries go
+on through the stages after it, and nothing else is processed.
 
 =head1 FUNCTIONS
 
 =head2 Stop
 
     Stop();
-    Stop(@data);
+    Stop(@values);
 
-Throws a stop carrying C<@data>. It's the same as
-C<< DBIx::Squirrel::Stop->throw(@data) >>, and is exported by
+Throws a stop carrying C<@values>, the last values of the stage that
+throws it. It's the same as
+C<< DBIx::Squirrel::Stop->throw(@values) >>, and is exported by
 default.
 
 To keep it out of your namespace:
@@ -66,23 +71,23 @@ To keep it out of your namespace:
 =head2 throw
 
     DBIx::Squirrel::Stop->throw;
-    DBIx::Squirrel::Stop->throw(@data);
-    My::Stop->throw(@data);
+    DBIx::Squirrel::Stop->throw(@values);
+    My::Stop->throw(@values);
 
-Throws a stop carrying C<@data>, blessed into the class it was called
+Throws a stop carrying C<@values>, blessed into the class it was called
 on, so a subclass of DBIx::Squirrel::Stop throws one of its own. Called
 on a class that isn't a stop, it throws a plain DBIx::Squirrel::Stop.
 
 =head1 THE STOP
 
 A stop is an array reference, blessed into its class. Its first element
-is that class, and the rest are the data it was thrown with:
+is that class, and the rest are the values it was thrown with:
 
     eval { DBIx::Squirrel::Stop->throw(1, 2) };
     my $stop = $@;    # bless ['DBIx::Squirrel::Stop', 1, 2], 'DBIx::Squirrel::Stop'
 
-A pipeline doesn't use the data. It's there for code that
-catches a stop itself.
+A pipeline sends the values on through the stages after the one that
+threw it, as that stage's last values.
 
 As a string, a stop is "Stop used outside a pipeline", with a newline,
 which is what a user sees if one is thrown with nothing to catch it.
@@ -93,7 +98,7 @@ A pipeline recognises a stop with C<isa>, so a subclass of
 DBIx::Squirrel::Stop stops it too. A stage that catches errors
 itself, with C<eval> or C<try>, should throw a stop on again:
 
-    sub ($invocant) {
+    sub ($row) {
         try { ... }
         catch ($e) {
             die $e if $e isa 'DBIx::Squirrel::Stop';

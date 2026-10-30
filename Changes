@@ -4,9 +4,14 @@ Unreleased
 
     - connect croaks on failure, and clones an existing database
       handle passed in place of a data source.
+    - DBIx::Squirrel::Pipeline runs values through a list of stages,
+      each taking one value and returning any number. A pipeline is
+      called with values, or makes an iterator pulling them from a
+      source one at a time.
     - Stop comes from DBIx::Squirrel::Stop, exported automatically. A
-      stage calls Stop(...) or DBIx::Squirrel::Stop->throw(...), and
-      the Stop carries the arguments given. A subclass of
+      stage calls Stop(@values) or DBIx::Squirrel::Stop->throw(@values):
+      the values already out are kept, @values go on through the rest
+      of the stages, and nothing else is processed. A subclass of
       DBIx::Squirrel::Stop stops a pipeline too.
     - The successor to 1.6.5 begins, in a fresh repository: a rewrite in
       modern Perl, requiring Perl 5.36 or later. 1.x is archived in

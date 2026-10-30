@@ -8,8 +8,9 @@ use Carp      qw(croak);
 use DBI       qw();
 use Ref::Util qw(is_hashref);
 
-use DBIx::Squirrel::Helpers qw(order_stages);
-use DBIx::Squirrel::Stop    qw();
+use DBIx::Squirrel::Helpers  qw(split_stages);
+use DBIx::Squirrel::Pipeline qw();
+use DBIx::Squirrel::Stop     qw();
 
 our @ISA     = 'DBI';
 our $VERSION = 'v2.0.0';
@@ -168,18 +169,21 @@ too.
 
     use DBIx::Squirrel::Stop;
     Stop();
+    Stop(@values);
 
-    DBIx::Squirrel::Stop->throw;
+    DBIx::Squirrel::Stop->throw(@values);
 
-Called from a stage of a pipeline, ends the pipeline quietly: the rest
-of that stage, and the stages after it, don't run. C<Stop> is exported automatically by
+Called from a stage of a pipeline, ends the pipeline quietly. The rest
+of that stage doesn't run. The values already out of the pipeline are
+kept, C<@values> go on through the stages after it, and nothing else is
+processed. C<Stop> is exported automatically by
 L<DBIx::Squirrel::Stop>; C<< DBIx::Squirrel::Stop->throw >> does the same
 without importing it.
 
 Stop works by throwing an exception, which the pipeline catches. So a stage that catches errors itself, with C<eval> or C<try>,
 should throw a stop on again:
 
-    sub ($invocant) {
+    sub ($row) {
         try { ... }
         catch ($e) {
             die $e if $e isa 'DBIx::Squirrel::Stop';
