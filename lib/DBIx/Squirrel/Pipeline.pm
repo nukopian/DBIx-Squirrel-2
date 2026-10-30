@@ -4,12 +4,14 @@ package DBIx::Squirrel::Pipeline;
 
 use experimental qw(try);
 
-use overload '&{}' => sub ($self, @) { $self->{call} }, fallback => 1;
-
 use Carp      qw(croak);
 use Ref::Util qw(is_coderef);
 
-our @CARP_NOT = qw(DBIx::Squirrel);
+use namespace::clean;
+
+use overload '&{}' => sub ($self, @) { $self->{call} }, fallback => 1;
+
+our @CARP_NOT = qw(DBIx::Squirrel DBIx::Squirrel::Pipes);
 
 # Return a pipeline, called with values to run each of them through the
 # stages.

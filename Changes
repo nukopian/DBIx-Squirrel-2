@@ -4,15 +4,22 @@ Unreleased
 
     - connect croaks on failure, and clones an existing database
       handle passed in place of a data source.
+    - connect returns DBIx::Squirrel's own handles: database handles
+      are DBIx::Squirrel::db, and statement handles
+      DBIx::Squirrel::st, subclasses of the DBI's. The DBI no longer
+      warns that DBIx::Squirrel's handle classes aren't set up.
     - DBIx::Squirrel::Pipeline runs values through a list of stages,
       each taking one value and returning any number. A pipeline is
       called with values, or makes an iterator pulling them from a
       source one at a time.
-    - pipe runs its invocant through a pipeline of stages, and returns
-      what comes out: all of it in list context, the first value in
-      scalar context.
-    - tap runs its invocant through a pipeline of stages for their side
-      effects, and returns the invocant.
+    - pipe runs a database or statement handle through a pipeline of
+      stages, and returns what comes out: all of it in list context,
+      the first value in scalar context.
+    - tap runs a database or statement handle through a pipeline of
+      stages for their side effects, and returns the handle.
+    - Functions DBIx::Squirrel's modules import, such as croak, are
+      cleaned out of their packages with namespace::clean, a new
+      dependency, so they can't be called as methods.
     - Stop comes from DBIx::Squirrel::Stop, exported automatically. A
       stage calls Stop(@values) or DBIx::Squirrel::Stop->throw(@values):
       the values already out are kept, @values go on through the rest

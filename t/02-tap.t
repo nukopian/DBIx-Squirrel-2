@@ -5,46 +5,54 @@ use Test2::Plugin::NoWarnings;
 use DBIx::Squirrel;
 use DBIx::Squirrel::Stop;
 
-package My::Squirrel {
-    our @ISA = 'DBIx::Squirrel';
-}
+my $dbh = DBIx::Squirrel->connect(
+    'dbi:SQLite:dbname=:memory:', '', '',
+    {RaiseError => 1, PrintError => 0},
+);
 
-subtest 'tap returns the invocant' => sub {
-    is DBIx::Squirrel->tap(sub { 'something else' }), 'DBIx::Squirrel',
-        'the class';
-    is My::Squirrel->tap(sub { () }), 'My::Squirrel',   'a subclass';
-    is DBIx::Squirrel->tap,           'DBIx::Squirrel', 'with no stages';
+subtest 'tap returns the database handle' => sub {
+    ref_is $dbh->tap(sub { 'something else' }), $dbh, 'whatever comes out';
+    ref_is $dbh->tap(sub { () }),               $dbh, 'when nothing does';
+    ref_is $dbh->tap,                           $dbh, 'with no stages';
 
-    my @all = DBIx::Squirrel->tap(sub { (1, 2, 3) });
-    is \@all, ['DBIx::Squirrel'], 'and only the invocant, in list context';
+    my @all = $dbh->tap(sub { (1, 2, 3) });
+    is scalar(@all), 1, 'and only the handle, in list context';
+    ref_is $all[0], $dbh, 'the handle';
 };
 
 subtest 'the stages run for their side effects' => sub {
     my @seen;
-    my $arg = sub ($x) { push @seen, "first($x)"; (1, 2, 3) };
-    DBIx::Squirrel->tap(
-        $arg,
+    $dbh->tap(
+        sub ($x) { push @seen, ref $x; (1, 2, 3) },
         sub { $_ % 2 ? $_ : () },
         sub { push @seen, "last($_)"; $_ },
     );
-    is \@seen, ['first(DBIx::Squirrel)', 'last(1)', 'last(3)'];
+    is \@seen, ['DBIx::Squirrel::db', 'last(1)', 'last(3)'];
 };
 
-subtest 'Stop ends the stages, and tap still returns the invocant' => sub {
+subtest 'tap carries on a chain of method calls' => sub {
+    my $n;
+    $dbh->tap(sub { $_->do('CREATE TABLE t (n INTEGER)') })
+        ->do('INSERT INTO t VALUES (1)');
+    ($n) = $dbh->selectrow_array('SELECT COUNT(*) FROM t');
+    is $n, 1;
+};
+
+subtest 'Stop ends the stages, and tap still returns the handle' => sub {
     my @seen;
-    my $invocant = DBIx::Squirrel->tap(
+    my $handle = $dbh->tap(
         sub { (1, 2, 3) },
         sub { $_ == 2 ? Stop('two') : $_ },
         sub { push @seen, $_ },
     );
-    is $invocant, 'DBIx::Squirrel', 'the invocant';
-    is \@seen,    [1, 'two'],       'the stages ran until the Stop';
+    ref_is $handle, $dbh, 'the handle';
+    is \@seen, [1, 'two'], 'the stages ran until the Stop';
 };
 
 subtest 'a stage that dies is reported where tap was called' => sub {
-    my @stages = (sub { $_ }, sub { die "boom\n" });      ## no critic (ErrorHandling::RequireCarping)
+    my @stages = (sub { $_ }, sub { die "boom\n" });    ## no critic (ErrorHandling::RequireCarping)
     my $line   = __LINE__ + 1;
-    my $err    = dies { DBIx::Squirrel->tap(@stages) };
+    my $err    = dies { $dbh->tap(@stages) };
     is $err,
         "Pipeline stage #2 failed at ${\ __FILE__ } line $line:\n    boom\n";
 };
@@ -52,8 +60,23 @@ subtest 'a stage that dies is reported where tap was called' => sub {
 subtest 'a stage that is not a code reference' => sub {
     my @stages = (sub { $_ }, 'x');
     my $line   = __LINE__ + 1;
-    my $err    = dies { DBIx::Squirrel->tap(@stages) };
+    my $err    = dies { $dbh->tap(@stages) };
     is $err, "Stage #2 is not a code-reference at ${\ __FILE__ } line $line.\n";
+};
+
+subtest 'a statement handle has tap too' => sub {
+    my $sth = $dbh->prepare('SELECT 6 * 7');
+    my $n;
+    ref_is $sth->tap(sub { $_->execute }), $sth, 'returning the handle';
+    ($n) = $sth->fetchrow_array;
+    is $n, 42, 'after running the stages';
+
+    my @stages = (sub { die "boom\n" });        ## no critic (ErrorHandling::RequireCarping)
+    my $line   = __LINE__ + 1;
+    my $err    = dies { $sth->tap(@stages) };
+    is $err,
+        "Pipeline stage #1 failed at ${\ __FILE__ } line $line:\n    boom\n",
+        'reporting errors where tap was called';
 };
 
 done_testing;

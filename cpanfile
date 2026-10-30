@@ -1,6 +1,7 @@
 requires 'perl', '5.036';
 requires 'DBI';
 requires 'Ref::Util';
+requires 'namespace::clean';
 
 on test => sub {
     requires 'DBD::SQLite';

@@ -5,6 +5,8 @@ package DBIx::Squirrel::Helpers;
 use Exporter  qw(import);
 use Ref::Util qw(is_coderef);
 
+use namespace::clean -except => 'import';
+
 our @EXPORT_OK = qw(split_stages);
 
 # Split the trailing code-references off a list; return them in an array

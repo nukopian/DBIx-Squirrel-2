@@ -6,9 +6,12 @@ use Carp      qw(croak);
 use DBI       qw();
 use Ref::Util qw(is_hashref);
 
-use DBIx::Squirrel::Helpers  qw(split_stages);
-use DBIx::Squirrel::Pipeline qw();
-use DBIx::Squirrel::Stop     qw();
+use DBIx::Squirrel::Helpers qw(split_stages);
+use DBIx::Squirrel::Stop    qw();
+use DBIx::Squirrel::db      qw();
+use DBIx::Squirrel::st      qw();
+
+use namespace::clean;
 
 our @ISA     = 'DBI';
 our $VERSION = 'v2.0.0';
@@ -17,12 +20,10 @@ our $VERSION = 'v2.0.0';
 sub connect ($class, $source, @args) {
     return _connect_dbh($class, $source, @args)
         if $source isa 'DBI::db';
-
     my $username = is_hashref($args[0]) ? undef       : shift @args;
     my $password = is_hashref($args[0]) ? undef       : shift @args;
     my $attrs    = is_hashref($args[0]) ? shift @args : {};
-
-    my $dbh = $class->SUPER::connect(
+    my $dbh      = $class->SUPER::connect(
         $source,
         $username,
         $password, {
@@ -30,9 +31,8 @@ sub connect ($class, $source, @args) {
             RootClass => ref($class) || $class,
         },
     );
-
-    croak $DBI::errstr unless $dbh;
-
+    croak $DBI::errstr
+        unless $dbh;
     return $dbh;
 }
 
@@ -40,28 +40,13 @@ sub connect ($class, $source, @args) {
 # another connection.
 sub _connect_dbh ($class, $dbh, @args) {
     my $attrs = @args && is_hashref($args[0]) ? shift @args : {};
-
     $dbh = $dbh->clone({
         %$attrs,
         RootClass => ref($class) || $class,
     });
-
-    croak $DBI::errstr unless $dbh;
-
+    croak $DBI::errstr
+        unless $dbh;
     return $dbh;
-}
-
-# Run the invocant through a pipeline of stages.
-sub pipe ($self, @stages) {    ## no critic (Subroutines::ProhibitBuiltinHomonyms)
-    my @res = DBIx::Squirrel::Pipeline->new(@stages)->($self);
-    return wantarray ? @res : $res[0];
-}
-
-# Run the invocant through a pipeline of stages for their side-effects, and
-# return the invocant.
-sub tap ($self, @stages) {
-    DBIx::Squirrel::Pipeline->new(@stages)->($self);
-    return $self;
 }
 
 1;
@@ -83,16 +68,16 @@ DBIx::Squirrel - DBI, minus the boilerplate, plus a pipeline
     # A new connection with the same parameters as an existing one
     my $other = DBIx::Squirrel->connect($dbh, \%attr);
 
-    # Run the invocant through a pipeline of stages
-    my @results = DBIx::Squirrel->pipe(
-        sub ($invocant) { ... },
-        sub ($value)    { ... },
+    # Run the database handle through a pipeline of stages
+    my @results = $dbh->pipe(
+        sub ($dbh)   { ... },
+        sub ($value) { ... },
     );
 
-    # The same, as a branch off to the side: get the invocant back
-    my $invocant = DBIx::Squirrel->tap(
-        sub ($invocant) { ... },
-        sub ($value)    { ... },
+    # The same, as a branch off to the side: get the handle back
+    $dbh = $dbh->tap(
+        sub ($dbh)   { ... },
+        sub ($value) { ... },
     );
 
 =head1 DESCRIPTION
@@ -108,9 +93,8 @@ notes where they differ.
 
 B<In development.> This is the successor to DBIx-Squirrel 1.x, being
 rewritten for Perl 5.36 or later, and much of it is still to come. In
-particular, DBIx::Squirrel's own database and statement handle classes
-don't exist yet, so L</connect> returns the DBI's own handles for now,
-and the DBI warns that it can't use DBIx::Squirrel's.
+particular, DBIx::Squirrel's statement handles have only L</pipe> and
+L</tap> of their own so far.
 
 =head1 METHODS
 
@@ -121,7 +105,9 @@ and the DBI warns that it can't use DBIx::Squirrel's.
     $dbh = DBIx::Squirrel->connect($dbh, \%attr);
 
 Connects to a data source, as the DBI's C<connect> does, and returns a
-database handle.
+database handle, a L<DBIx::Squirrel::db>. Its statement handles are
+L<DBIx::Squirrel::st>s. Both are subclasses of the DBI's own, so they
+do everything the DBI's handles do.
 
 Unlike the DBI's C<connect>, it B<always croaks> if the connection
 fails, whatever C<RaiseError> is set to, with the DBI's error message,
@@ -129,7 +115,15 @@ reported at the line that called C<connect>. The DBI returns C<undef>
 unless C<RaiseError> is set.
 
 Called on a subclass of DBIx::Squirrel, it uses that subclass's database
-and statement handle classes in place of DBIx::Squirrel's.
+and statement handle classes in place of DBIx::Squirrel's. The subclass
+needs both, as the DBI requires, each a subclass of DBIx::Squirrel's:
+
+    package My::Squirrel     { our @ISA = 'DBIx::Squirrel' }
+    package My::Squirrel::db { our @ISA = 'DBIx::Squirrel::db' }
+    package My::Squirrel::st { our @ISA = 'DBIx::Squirrel::st' }
+
+Without them, the DBI warns that the subclass isn't set up, and returns
+its own handles.
 
 =head3 Connecting with an existing handle
 
@@ -149,27 +143,33 @@ C<connect_cached> is the DBI's own, unchanged. The DBI's C<connect_cached>
 calls C<connect> when it needs a new connection, so it croaks on failure
 too.
 
+=head1 HANDLE METHODS
+
+Database and statement handles both have these methods, inherited from
+L<DBIx::Squirrel::Pipes>. The examples use a database handle; on a
+statement handle, the statement handle goes through the stages instead.
+
 =head2 pipe
 
-    @results = $invocant->pipe(@stages);
-    $result  = $invocant->pipe(@stages);
+    @results = $dbh->pipe(@stages);
+    $result  = $dbh->pipe(@stages);
 
-Runs the invocant through a pipeline of stages, and returns what comes
-out of the last one.
+Runs the database handle through a pipeline of stages, and returns what
+comes out of the last one.
 
 Each stage is a code reference, called with one value, as its argument
-and in C<$_>. The first is called with the invocant. A stage returns
-nothing to drop the value, one value to pass it on, or several, each of
-which goes through the rest of the stages on its own:
+and in C<$_>. The first is called with the database handle. A stage
+returns nothing to drop the value, one value to pass it on, or several,
+each of which goes through the rest of the stages on its own:
 
-    my @odd_doubled = DBIx::Squirrel->pipe(
-        sub ($invocant) { (3, 4, 5) },
+    my @odd_doubled = $dbh->pipe(
+        sub ($dbh) { (3, 4, 5) },
         sub { $_ % 2 ? $_ : () },
         sub { $_ * 2 },
     );    # (6, 10)
 
 To end the pipeline early, call L</Stop>. With no stages, C<pipe>
-returns the invocant.
+returns the database handle.
 
 Called in list context, C<pipe> returns all the values. In scalar
 context, it returns the first, or C<undef> if there are none.
@@ -184,32 +184,34 @@ L<DBIx::Squirrel::Pipeline> says more about stages.
 
 =head2 tap
 
-    $invocant = $invocant->tap(@stages);
+    $dbh = $dbh->tap(@stages);
 
-Runs the invocant through a pipeline of stages, as a branch off to the
-side for their side effects, and returns the invocant, so that a chain
-of method calls can carry on after it.
+Runs the database handle through a pipeline of stages, as a branch off
+to the side for their side effects, and returns the handle, so that a
+chain of method calls can carry on after it.
 
-    $invocant ───┬───▶ $invocant
-                 │
-                 └───▶ stage #1 ───▶ stage #2 ───▶ ...
+    $dbh ───┬───▶ $dbh
+            │
+            └───▶ stage #1 ───▶ stage #2 ───▶ ...
 
 The stages work as they do in L</pipe>; what comes out of the last one
-is dropped. For example, to log a report on the invocant, then carry on
-with it:
+is dropped. For example, to log how many rows a table has, then carry
+on with the handle:
 
-    $invocant->tap(
-        sub ($invocant) { $invocant->report },
-        sub ($report)   { log_report($report) },
-    )->carry_on;
+    $dbh->tap(
+        sub ($dbh)   { $dbh->selectrow_array('SELECT COUNT(*) FROM artist') },
+        sub ($count) { log_count($count) },
+    )->do('DELETE FROM artist WHERE id = ?', undef, $id);
 
 A stage passes on whatever its last statement gives, even one run for
 its side effects, so each stage except the last should return what the
 next one needs.
 
-C<tap> returns the invocant however the stages end: having run out of
+C<tap> returns the handle however the stages end: having run out of
 values, been stopped with L</Stop>, or with no stages at all. If a
 stage dies, C<tap> croaks at the line that called it, as L</pipe> does.
+
+=head1 FUNCTIONS
 
 =head2 Stop
 
@@ -262,7 +264,9 @@ L</Stop> was called where no pipeline was running to catch it.
 
 =head1 SEE ALSO
 
-L<DBI>, L<DBIx::Squirrel::Pipeline>, L<DBIx::Squirrel::Stop>
+L<DBI>, L<DBIx::Squirrel::db>, L<DBIx::Squirrel::st>,
+L<DBIx::Squirrel::Pipes>, L<DBIx::Squirrel::Pipeline>,
+L<DBIx::Squirrel::Stop>
 
 =head1 AUTHOR
 

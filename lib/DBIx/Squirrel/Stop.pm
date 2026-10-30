@@ -2,10 +2,12 @@ use v5.36;
 
 package DBIx::Squirrel::Stop;
 
-use overload '""' => sub { "Stop used outside a pipeline\n" }, fallback => 1;
-
 use Carp     qw(croak);
 use Exporter qw(import);
+
+use namespace::clean -except => 'import';
+
+use overload '""' => sub { "Stop used outside a pipeline\n" }, fallback => 1;
 
 our @EXPORT = qw(Stop);    ## no critic (Modules::ProhibitAutomaticExportation)
 
